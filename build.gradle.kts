@@ -57,4 +57,8 @@ tasks.withType<Test> {
 		exceptionFormat = TestExceptionFormat.FULL
 		events("failed")
 	}
+	val envFile = rootProject.file(".env")
+	if (envFile.exists()) envFile.readLines()
+		.filter { it.isNotBlank() && !it.startsWith("#") && it.contains("=") }
+		.forEach { val (k, v) = it.split("=", limit = 2); environment(k, v) }
 }
