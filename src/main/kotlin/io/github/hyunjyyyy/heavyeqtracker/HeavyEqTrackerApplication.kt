@@ -1,4 +1,4 @@
-package io.github.hyunjyyyy.heavy_eq_tracker
+package io.github.hyunjyyyy.heavyeqtracker
 
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication

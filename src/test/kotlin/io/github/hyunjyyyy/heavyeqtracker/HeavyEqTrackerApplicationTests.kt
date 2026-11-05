@@ -1,4 +1,4 @@
-package io.github.hyunjyyyy.heavy_eq_tracker
+package io.github.hyunjyyyy.heavyeqtracker
 
 import org.junit.jupiter.api.Test
 import org.springframework.boot.test.context.SpringBootTest
