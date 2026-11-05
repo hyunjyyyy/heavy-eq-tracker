@@ -10,20 +10,11 @@ spring:
       ddl-auto: validate
     open-in-view: false
     properties:
-      hibernate:
-        jdbc:
-          time_zone: UTC
+      hibernate.jdbc.time_zone: UTC
 
 logging:
   level:
-    org:
-      hibernate:
-        SQL: DEBUG
-        orm:
-          jdbc:
-            bind: TRACE
-    com:
-      zaxxer:
-        hikari:
-          HikariConfig: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.orm.jdbc.bind: TRACE
+    com.zaxxer.hikari.HikariConfig: DEBUG
 

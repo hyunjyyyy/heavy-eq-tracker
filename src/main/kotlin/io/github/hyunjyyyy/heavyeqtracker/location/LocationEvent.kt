@@ -7,7 +7,7 @@ import java.time.Instant
 @Entity
 @Table(name = "location_event")
 class LocationEvent(
-    @ManyToOne(fetch = FetchType.LAZY)    // equipment_id 숫자 대신 Equipment 객체를 들고 있는다. LAZY = 건드릴 때 읽음
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "equipment_id", nullable = false)
     var equipment: Equipment,
 
@@ -18,7 +18,7 @@ class LocationEvent(
     var lon: Double,
 
     @Column(name = "speed_kmh")
-    var speedKmh: Double? = null,         // SQL에서 NULL 허용 → Kotlin은 ?
+    var speedKmh: Double? = null,
 
     @Column
     var heading: Double? = null,

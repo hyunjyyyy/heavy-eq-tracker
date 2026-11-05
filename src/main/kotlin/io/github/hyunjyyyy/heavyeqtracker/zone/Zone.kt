@@ -15,7 +15,7 @@ class Zone(
     @Column(nullable = false, length = 20)
     var kind: ZoneKind,
 
-    @JdbcTypeCode(SqlTypes.JSON)          // "이 String은 DB의 JSON 열이다". 없으면 validate 실패
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(nullable = false)
     var polygon: String,
 
