@@ -20,4 +20,5 @@ logging:
     org.hibernate.SQL: DEBUG
     org.hibernate.orm.jdbc.bind: TRACE
     com.zaxxer.hikari.HikariConfig: DEBUG
+    org.springframework.web.servlet.mvc.method.annotation: DEBUG
 
