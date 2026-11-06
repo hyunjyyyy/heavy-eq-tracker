@@ -45,3 +45,5 @@ out/
 ### etc ###
 boot.log
 /pr/
+/body.json
+/body-bad.json
