@@ -1,44 +1,34 @@
 package io.github.hyunjyyyy.heavyeqtracker.location;
 
-import io.github.hyunjyyyy.heavyeqtracker.equipment.Equipment;
-import io.github.hyunjyyyy.heavyeqtracker.equipment.EquipmentRepository;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class LocationIngestService {
 
-    private final EquipmentRepository equipmentRepository;
-    private final LocationEventRepository eventRepository;
+    private final IdempotencyStore store;
+    private final LocationEventWriter writer;
 
-    public LocationIngestService(EquipmentRepository equipmentRepository,
-                                 LocationEventRepository eventRepository) {
-        this.equipmentRepository = equipmentRepository;
-        this.eventRepository = eventRepository;
+    public LocationIngestService(IdempotencyStore store, LocationEventWriter writer) {
+        this.store = store;
+        this.writer = writer;
     }
 
-    @Transactional
     public IngestResult ingest(LocationReport report, String idempotencyKey) {
-        var existing = eventRepository.findByIdempotencyKey(idempotencyKey);
-        if (existing.isPresent()) {
-            return new IngestResult(new LocationAck(existing.get().getId()), false);
+        if (!store.tryAcquire(idempotencyKey)) {
+            return store.savedEventId(idempotencyKey)
+                    .map(id -> new IngestResult(new LocationAck(id), false))
+                    .orElseThrow(() -> new DuplicateInProgressException(idempotencyKey));
         }
 
-        Equipment equipment = equipmentRepository.findById(report.equipmentId())
-                .orElseThrow(() -> new EquipmentNotFoundException(report.equipmentId()));
+        IngestResult result;
+        try {
+            result = writer.save(report, idempotencyKey);
+        } catch (RuntimeException e) {
+            store.release(idempotencyKey);
+            throw e;
+        }
 
-        LocationEvent saved = eventRepository.save(new LocationEvent(
-                equipment,
-                report.lat(),
-                report.lon(),
-                report.speedKmh(),
-                report.heading(),
-                report.fixType(),
-                report.horizontalAccuracyM(),
-                report.recordedAt(),
-                idempotencyKey
-        ));
-
-        return new IngestResult(new LocationAck(saved.getId()), true);
+        store.complete(idempotencyKey, result.ack().eventId());
+        return result;
     }
 }
