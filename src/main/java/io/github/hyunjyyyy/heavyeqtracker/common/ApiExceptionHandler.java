@@ -1,6 +1,7 @@
 package io.github.hyunjyyyy.heavyeqtracker.common;
 
 import io.github.hyunjyyyy.heavyeqtracker.location.DuplicateInProgressException;
+import io.github.hyunjyyyy.heavyeqtracker.location.EquipmentIdMismatchException;
 import io.github.hyunjyyyy.heavyeqtracker.location.EquipmentNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -18,5 +19,10 @@ public class ApiExceptionHandler {
     @ExceptionHandler(DuplicateInProgressException.class)
     public ProblemDetail duplicateInProgress(DuplicateInProgressException e) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, e.getMessage());
+    }
+
+    @ExceptionHandler(EquipmentIdMismatchException.class)
+    public ProblemDetail equipmentIdMismatch(EquipmentIdMismatchException e) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, e.getMessage());
     }
 }

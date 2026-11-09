@@ -6,4 +6,5 @@ import java.util.Optional;
 
 public interface LocationEventRepository extends JpaRepository<LocationEvent, Long> {
     Optional<LocationEvent> findByIdempotencyKey(String idempotencyKey);
+    Optional<LocationEvent> findFirstByEquipmentIdOrderByRecordedAtDesc(Long equipmentId);
 }
