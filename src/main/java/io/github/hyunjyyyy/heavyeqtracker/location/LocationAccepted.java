@@ -1,4 +1,4 @@
 package io.github.hyunjyyyy.heavyeqtracker.location;
 
-public record LocationAck(Long eventId) {
+public record LocationAccepted(String idempotencyKey) {
 }

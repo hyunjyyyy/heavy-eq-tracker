@@ -1,34 +1,36 @@
 package io.github.hyunjyyyy.heavyeqtracker.location;
 
+import io.github.hyunjyyyy.heavyeqtracker.equipment.EquipmentRepository;
 import org.springframework.stereotype.Service;
 
 @Service
 public class LocationIngestService {
 
     private final IdempotencyStore store;
-    private final LocationEventWriter writer;
+    private final EquipmentRepository equipmentRepository;
+    private final LocationEventProducer producer;
 
-    public LocationIngestService(IdempotencyStore store, LocationEventWriter writer) {
+    public LocationIngestService(IdempotencyStore store,
+                                 EquipmentRepository equipmentRepository,
+                                 LocationEventProducer producer) {
         this.store = store;
-        this.writer = writer;
+        this.equipmentRepository = equipmentRepository;
+        this.producer = producer;
     }
 
-    public IngestResult ingest(LocationReport report, String idempotencyKey) {
+    public LocationAccepted ingest(LocationReport report, String idempotencyKey) {
         if (!store.tryAcquire(idempotencyKey)) {
-            return store.savedEventId(idempotencyKey)
-                    .map(id -> new IngestResult(new LocationAck(id), false))
-                    .orElseThrow(() -> new DuplicateInProgressException(idempotencyKey));
+            return new LocationAccepted(idempotencyKey);   // 재전송: 같은 응답
         }
-
-        IngestResult result;
         try {
-            result = writer.save(report, idempotencyKey);
+            if (!equipmentRepository.existsById(report.equipmentId())) {
+                throw new EquipmentNotFoundException(report.equipmentId());
+            }
+            producer.publish(LocationMessage.of(report, idempotencyKey));
         } catch (RuntimeException e) {
             store.release(idempotencyKey);
             throw e;
         }
-
-        store.complete(idempotencyKey, result.ack().eventId());
-        return result;
+        return new LocationAccepted(idempotencyKey);
     }
 }

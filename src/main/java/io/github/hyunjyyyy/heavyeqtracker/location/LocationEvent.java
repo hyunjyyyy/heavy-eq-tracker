@@ -57,6 +57,7 @@ public class LocationEvent {
                          FixType fixType,
                          Double horizontalAccuracyM,
                          Instant recordedAt,
+                         Instant receivedAt,
                          String idempotencyKey) {
         this.equipment = equipment;
         this.lat = lat;
@@ -66,7 +67,7 @@ public class LocationEvent {
         this.fixType = fixType;
         this.horizontalAccuracyM = horizontalAccuracyM;
         this.recordedAt = recordedAt;
-        this.receivedAt = Instant.now();
+        this.receivedAt = receivedAt;
         this.idempotencyKey = idempotencyKey;
     }
 }

@@ -2,12 +2,16 @@ package io.github.hyunjyyyy.heavyeqtracker.location;
 
 import io.github.hyunjyyyy.heavyeqtracker.equipment.Equipment;
 import io.github.hyunjyyyy.heavyeqtracker.equipment.EquipmentRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.context.ApplicationEventPublisher;
 
 @Service
 public class LocationEventWriter {
+
+    private static final Logger log = LoggerFactory.getLogger(LocationEventWriter.class);
 
     private final EquipmentRepository equipmentRepository;
     private final LocationEventRepository eventRepository;
@@ -22,27 +26,19 @@ public class LocationEventWriter {
     }
 
     @Transactional
-    public IngestResult save(LocationReport report, String idempotencyKey) {
-        var existing = eventRepository.findByIdempotencyKey(idempotencyKey);
-        if (existing.isPresent()) {
-            return new IngestResult(new LocationAck(existing.get().getId()), false);
+    public void save(LocationMessage m) {
+        if (eventRepository.findByIdempotencyKey(m.idempotencyKey()).isPresent()) {
+            log.info("duplicate message skipped: idempotencyKey={}", m.idempotencyKey());
+            return;
         }
 
-        Equipment equipment = equipmentRepository.findById(report.equipmentId())
-                .orElseThrow(() -> new EquipmentNotFoundException(report.equipmentId()));
+        Equipment equipment = equipmentRepository.findById(m.equipmentId())
+                .orElseThrow(() -> new EquipmentNotFoundException(m.equipmentId()));
 
         LocationEvent saved = eventRepository.save(new LocationEvent(
-                equipment,
-                report.lat(),
-                report.lon(),
-                report.speedKmh(),
-                report.heading(),
-                report.fixType(),
-                report.horizontalAccuracyM(),
-                report.recordedAt(),
-                idempotencyKey
-        ));
+                equipment, m.lat(), m.lon(), m.speedKmh(), m.heading(), m.fixType(),
+                m.horizontalAccuracyM(), m.recordedAt(), m.receivedAt(), m.idempotencyKey()));
+
         publisher.publishEvent(new LocationRecorded(LatestLocation.from(saved)));
-        return new IngestResult(new LocationAck(saved.getId()), true);
     }
 }
