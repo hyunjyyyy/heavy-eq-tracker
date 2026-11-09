@@ -14,7 +14,17 @@ spring:
   mvc:
     problemdetails:
       enabled: true
-      
+  kafka:
+    producer:
+      acks: all
+      properties:
+        enable.idempotence: true
+    consumer:
+      group-id: tracker-judge
+      auto-offset-reset: earliest
+    listener:
+      ack-mode: record
+
 logging:
   level:
     org.hibernate.SQL: DEBUG

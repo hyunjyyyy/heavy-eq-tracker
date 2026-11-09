@@ -20,15 +20,13 @@ public class LocationController {
     }
 
     @PostMapping
-    public ResponseEntity<LocationAck> report(
+    public ResponseEntity<LocationAccepted> report(
             @RequestHeader("Idempotency-Key") String idempotencyKey,
             @RequestHeader("X-Equipment-Id") Long equipmentIdHeader,
             @Valid @RequestBody LocationReport report) {
         if (!equipmentIdHeader.equals(report.equipmentId())) {
             throw new EquipmentIdMismatchException(equipmentIdHeader, report.equipmentId());
         }
-        IngestResult result = service.ingest(report, idempotencyKey);
-        HttpStatus status = result.created() ? HttpStatus.CREATED : HttpStatus.OK;
-        return ResponseEntity.status(status).body(result.ack());
+        return ResponseEntity.accepted().body(service.ingest(report, idempotencyKey));
     }
 }
