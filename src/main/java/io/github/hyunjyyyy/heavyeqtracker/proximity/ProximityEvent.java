@@ -1,0 +1,51 @@
+package io.github.hyunjyyyy.heavyeqtracker.proximity;
+
+import jakarta.persistence.*;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
+import java.time.Instant;
+
+@Entity
+@Table(name = "proximity_event")
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class ProximityEvent {
+
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = "equipment_a_id", nullable = false)
+    private Long equipmentAId;
+
+    @Column(name = "equipment_b_id", nullable = false)
+    private Long equipmentBId;
+
+    @Column(name = "location_event_id", nullable = false)
+    private Long locationEventId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 10)
+    private ProximityEventType type;
+
+    @Column(name = "distance_m", nullable = false)
+    private double distanceM;
+
+    @Column(name = "recorded_at", nullable = false)
+    private Instant recordedAt;
+
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private Instant createdAt;
+
+    public ProximityEvent(Long equipmentAId, Long equipmentBId, Long locationEventId,
+                          ProximityEventType type, double distanceM, Instant recordedAt) {
+        this.equipmentAId = equipmentAId;
+        this.equipmentBId = equipmentBId;
+        this.locationEventId = locationEventId;
+        this.type = type;
+        this.distanceM = distanceM;
+        this.recordedAt = recordedAt;
+        this.createdAt = Instant.now();
+    }
+}

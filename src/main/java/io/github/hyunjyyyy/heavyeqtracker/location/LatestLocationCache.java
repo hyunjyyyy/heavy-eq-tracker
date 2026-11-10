@@ -6,6 +6,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
+import org.springframework.data.geo.Point;
 import tools.jackson.databind.ObjectMapper;
 
 import java.time.Duration;
@@ -19,6 +20,7 @@ public class LatestLocationCache {
 
     private final StringRedisTemplate redis;
     private final ObjectMapper objectMapper;
+    public static final String FLEET_KEY = "fleet";
 
     public LatestLocationCache(StringRedisTemplate redis, ObjectMapper objectMapper) {
         this.redis = redis;
@@ -37,6 +39,7 @@ public class LatestLocationCache {
     public void put(LatestLocation latest) {
         String json = objectMapper.writeValueAsString(latest);
         redis.opsForValue().set(keyOf(latest.equipmentId()), json, TTL);
+        redis.opsForGeo().add(FLEET_KEY, new Point(latest.lon(), latest.lat()), String.valueOf(latest.equipmentId()));
     }
 
     public Optional<LatestLocation> get(Long equipmentId) {
