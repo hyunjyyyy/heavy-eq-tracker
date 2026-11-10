@@ -2,6 +2,7 @@ package io.github.hyunjyyyy.heavyeqtracker.location;
 
 import io.github.hyunjyyyy.heavyeqtracker.equipment.Equipment;
 import io.github.hyunjyyyy.heavyeqtracker.equipment.EquipmentRepository;
+import io.github.hyunjyyyy.heavyeqtracker.zone.GeofenceService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
@@ -16,13 +17,16 @@ public class LocationEventWriter {
     private final EquipmentRepository equipmentRepository;
     private final LocationEventRepository eventRepository;
     private final ApplicationEventPublisher publisher;
+    private final GeofenceService geofenceService;
 
     public LocationEventWriter(EquipmentRepository equipmentRepository,
                                LocationEventRepository eventRepository,
-                               ApplicationEventPublisher publisher) {
+                               ApplicationEventPublisher publisher,
+                               GeofenceService geofenceService) {
         this.equipmentRepository = equipmentRepository;
         this.eventRepository = eventRepository;
         this.publisher = publisher;
+        this.geofenceService = geofenceService;
     }
 
     @Transactional
@@ -38,7 +42,7 @@ public class LocationEventWriter {
         LocationEvent saved = eventRepository.save(new LocationEvent(
                 equipment, m.lat(), m.lon(), m.speedKmh(), m.heading(), m.fixType(),
                 m.horizontalAccuracyM(), m.recordedAt(), m.receivedAt(), m.idempotencyKey()));
-
+        geofenceService.judge(saved);
         publisher.publishEvent(new LocationRecorded(LatestLocation.from(saved)));
     }
 }
