@@ -1,5 +1,7 @@
 package io.github.hyunjyyyy.heavyeqtracker.location;
 
+import io.github.hyunjyyyy.heavyeqtracker.equipment.PositioningSource;
+
 import java.time.Instant;
 
 public record LatestLocation(
@@ -10,12 +12,14 @@ public record LatestLocation(
         Double heading,
         FixType fixType,
         Double horizontalAccuracyM,
-        Instant recordedAt
+        Instant recordedAt,
+        PositioningSource positioningSource
 ) {
     static LatestLocation from(LocationEvent e) {
         return new LatestLocation(
                 e.getEquipment().getId(),
                 e.getLat(), e.getLon(), e.getSpeedKmh(), e.getHeading(),
-                e.getFixType(), e.getHorizontalAccuracyM(), e.getRecordedAt());
+                e.getFixType(), e.getHorizontalAccuracyM(), e.getRecordedAt(),
+                e.getEquipment().getPositioningSource());
     }
 }
