@@ -1,4 +1,4 @@
-package io.github.hyunjyyyy.heavyeqtracker.location;
+package io.github.hyunjyyyy.heavyeqtracker.equipment;
 
 public class EquipmentNotFoundException extends RuntimeException {
     public EquipmentNotFoundException(Long id) {

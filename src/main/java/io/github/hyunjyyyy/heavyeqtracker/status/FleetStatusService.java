@@ -1,5 +1,7 @@
-package io.github.hyunjyyyy.heavyeqtracker.location;
+package io.github.hyunjyyyy.heavyeqtracker.status;
 
+import io.github.hyunjyyyy.heavyeqtracker.location.LatestLocation;
+import io.github.hyunjyyyy.heavyeqtracker.location.LatestLocationCache;
 import io.github.hyunjyyyy.heavyeqtracker.zone.EquipmentZonePresence;
 import io.github.hyunjyyyy.heavyeqtracker.zone.EquipmentZonePresenceRepository;
 import org.springframework.data.redis.core.StringRedisTemplate;

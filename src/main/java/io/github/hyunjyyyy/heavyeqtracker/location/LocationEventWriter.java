@@ -1,9 +1,9 @@
 package io.github.hyunjyyyy.heavyeqtracker.location;
 
 import io.github.hyunjyyyy.heavyeqtracker.equipment.Equipment;
+import io.github.hyunjyyyy.heavyeqtracker.equipment.EquipmentNotFoundException;
 import io.github.hyunjyyyy.heavyeqtracker.equipment.EquipmentRepository;
-import io.github.hyunjyyyy.heavyeqtracker.zone.GeofenceService;
-import io.github.hyunjyyyy.heavyeqtracker.proximity.ProximityService;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
@@ -18,19 +18,13 @@ public class LocationEventWriter {
     private final EquipmentRepository equipmentRepository;
     private final LocationEventRepository eventRepository;
     private final ApplicationEventPublisher publisher;
-    private final GeofenceService geofenceService;
-    private final ProximityService proximityService;
 
     public LocationEventWriter(EquipmentRepository equipmentRepository,
                                LocationEventRepository eventRepository,
-                               ApplicationEventPublisher publisher,
-                               GeofenceService geofenceService,
-                               ProximityService proximityService) {
+                               ApplicationEventPublisher publisher) {
         this.equipmentRepository = equipmentRepository;
         this.eventRepository = eventRepository;
         this.publisher = publisher;
-        this.geofenceService = geofenceService;
-        this.proximityService = proximityService;
     }
 
     @Transactional
@@ -46,8 +40,7 @@ public class LocationEventWriter {
         LocationEvent saved = eventRepository.save(new LocationEvent(
                 equipment, m.lat(), m.lon(), m.speedKmh(), m.heading(), m.fixType(),
                 m.horizontalAccuracyM(), m.recordedAt(), m.receivedAt(), m.idempotencyKey()));
-        geofenceService.judge(saved);
-        proximityService.judge(saved);
-        publisher.publishEvent(new LocationRecorded(LatestLocation.from(saved)));
+        publisher.publishEvent(new LocationSaved(saved));                              // 동기. 같은 트랜잭션에서 판정
+        publisher.publishEvent(new LocationRecorded(LatestLocation.from(saved)));      // 커밋 뒤. 캐시·GEO
     }
 }

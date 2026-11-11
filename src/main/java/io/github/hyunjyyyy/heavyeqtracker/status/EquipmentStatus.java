@@ -1,4 +1,6 @@
-package io.github.hyunjyyyy.heavyeqtracker.location;
+package io.github.hyunjyyyy.heavyeqtracker.status;
+
+import io.github.hyunjyyyy.heavyeqtracker.location.LatestLocation;
 
 import java.util.List;
 
