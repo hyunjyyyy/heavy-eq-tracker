@@ -4,9 +4,11 @@ import io.github.hyunjyyyy.heavyeqtracker.equipment.PositioningSource;
 import io.github.hyunjyyyy.heavyeqtracker.location.LatestLocation;
 import io.github.hyunjyyyy.heavyeqtracker.location.LatestLocationCache;
 import io.github.hyunjyyyy.heavyeqtracker.location.LocationEvent;
+import io.github.hyunjyyyy.heavyeqtracker.location.LocationSaved;
 import io.github.hyunjyyyy.heavyeqtracker.zone.GeoMath;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.event.EventListener;
 import org.springframework.data.geo.Distance;
 import org.springframework.data.geo.GeoResult;
 import org.springframework.data.geo.GeoResults;
@@ -48,8 +50,10 @@ public class ProximityService {
         this.pairRepository = pairRepository;
     }
 
+    @EventListener
     @Transactional
-    public void judge(LocationEvent event) {
+    public void onLocationSaved(LocationSaved saved) {
+        LocationEvent event = saved.event();
         Long me = event.getEquipment().getId();
         double myError = errorOf(event.getHorizontalAccuracyM(), event.getEquipment().getPositioningSource());
 

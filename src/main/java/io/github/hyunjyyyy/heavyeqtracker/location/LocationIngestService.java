@@ -1,5 +1,6 @@
 package io.github.hyunjyyyy.heavyeqtracker.location;
 
+import io.github.hyunjyyyy.heavyeqtracker.equipment.EquipmentNotFoundException;
 import io.github.hyunjyyyy.heavyeqtracker.equipment.EquipmentRepository;
 import org.springframework.stereotype.Service;
 

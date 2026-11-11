@@ -1,5 +1,6 @@
 package io.github.hyunjyyyy.heavyeqtracker.location;
 
+import io.github.hyunjyyyy.heavyeqtracker.equipment.EquipmentNotFoundException;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 
@@ -11,14 +12,11 @@ import java.util.List;
 public class LatestLocationController {
 
     private final LatestLocationQueryService service;
-    private final FleetStatusService fleet;
     private final LocationHistoryService history;
 
     public LatestLocationController(LatestLocationQueryService service,
-                                    FleetStatusService fleet,
                                     LocationHistoryService history) {
         this.service = service;
-        this.fleet = fleet;
         this.history = history;
     }
 
@@ -26,11 +24,6 @@ public class LatestLocationController {
     public LatestLocation latest(@PathVariable Long id) {
         return service.latestOf(id)
                 .orElseThrow(() -> new EquipmentNotFoundException(id));
-    }
-
-    @GetMapping
-    public List<EquipmentStatus> fleet() {
-        return fleet.fleet();
     }
 
     @GetMapping("/{id}/events")

@@ -3,8 +3,10 @@ package io.github.hyunjyyyy.heavyeqtracker.zone;
 import io.github.hyunjyyyy.heavyeqtracker.location.LocationEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import io.github.hyunjyyyy.heavyeqtracker.location.LocationSaved;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -27,9 +29,10 @@ public class GeofenceService {
         this.presenceRepository = presenceRepository;
     }
 
-    /** 호출자의 트랜잭션에 합류한다 (LocationEventWriter.save) */
+    @EventListener
     @Transactional
-    public void judge(LocationEvent event) {
+    public void onLocationSaved(LocationSaved saved) {
+        LocationEvent event = saved.event();
         Long equipmentId = event.getEquipment().getId();
 
         Set<Long> now = catalog.active().stream()
