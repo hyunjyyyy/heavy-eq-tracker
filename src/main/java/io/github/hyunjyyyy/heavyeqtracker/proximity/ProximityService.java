@@ -18,7 +18,6 @@ import org.springframework.data.redis.domain.geo.GeoReference;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Duration;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -30,24 +29,20 @@ public class ProximityService {
 
     private static final Logger log = LoggerFactory.getLogger(ProximityService.class);
 
-    static final double THRESHOLD_M = 10.0;
-    static final double MAX_ERROR_M = 10.0;                                 // 오차 상한
-    static final double SEARCH_RADIUS_M = THRESHOLD_M + 2 * MAX_ERROR_M;    // 30 m. 임계값이 반경을 넘을 수 없다
-    static final double DEFAULT_PHONE_ERROR_M = 5.0;
-    static final double DEFAULT_RTK_ERROR_M = 0.05;
-    static final Duration STALE_AFTER = Duration.ofMinutes(10);             // 이보다 오래된 상대 위치는 후보에서 제외
-
     private final StringRedisTemplate redis;
     private final LatestLocationCache cache;
     private final ProximityEventRepository eventRepository;
     private final ProximityPairStateRepository pairRepository;
+    private final ProximityProperties props;
 
     public ProximityService(StringRedisTemplate redis, LatestLocationCache cache,
-                            ProximityEventRepository eventRepository, ProximityPairStateRepository pairRepository) {
+                            ProximityEventRepository eventRepository, ProximityPairStateRepository pairRepository,
+                            ProximityProperties props) {
         this.redis = redis;
         this.cache = cache;
         this.eventRepository = eventRepository;
         this.pairRepository = pairRepository;
+        this.props = props;
     }
 
     @EventListener
@@ -61,7 +56,7 @@ public class ProximityService {
         GeoResults<RedisGeoCommands.GeoLocation<String>> results = redis.opsForGeo().search(
                 LatestLocationCache.FLEET_KEY,
                 GeoReference.fromCoordinate(event.getLon(), event.getLat()),
-                new Distance(SEARCH_RADIUS_M, RedisGeoCommands.DistanceUnit.METERS),
+                new Distance(props.searchRadiusM(),RedisGeoCommands.DistanceUnit.METERS),
                 RedisGeoCommands.GeoSearchCommandArgs.newGeoSearchArgs());
 
         // 2. 후보마다: 최신 위치가 있고 신선한지 → 원본 좌표로 거리 재계산 → 오차 합 임계
@@ -73,13 +68,13 @@ public class ProximityService {
                     continue;
                 }
                 Optional<LatestLocation> latest = cache.get(other);
-                if (latest.isEmpty() || latest.get().recordedAt().isBefore(event.getRecordedAt().minus(STALE_AFTER))) {
+                if (latest.isEmpty() || latest.get().recordedAt().isBefore(event.getRecordedAt().minus(props.staleAfter()))) {
                     continue;   // 유령 장비(loc 만료) 또는 오래된 위치
                 }
                 LatestLocation l = latest.get();
                 double distance = GeoMath.distanceMeters(event.getLat(), event.getLon(), l.lat(), l.lon());
                 double otherError = errorOf(l.horizontalAccuracyM(), l.positioningSource());
-                if (distance < THRESHOLD_M + myError + otherError) {
+                if (distance < props.thresholdM() + myError + otherError) {
                     nearNow.put(other, distance);
                 }
             }
@@ -114,9 +109,9 @@ public class ProximityService {
         }
     }
 
-    static double errorOf(Double horizontalAccuracyM, PositioningSource source) {
+    double errorOf(Double horizontalAccuracyM, PositioningSource source) {
         double raw = horizontalAccuracyM != null ? horizontalAccuracyM
-                : (source == PositioningSource.PHONE_RTK ? DEFAULT_RTK_ERROR_M : DEFAULT_PHONE_ERROR_M);
-        return Math.min(raw, MAX_ERROR_M);
+                : (source == PositioningSource.PHONE_RTK ? props.defaultRtkErrorM() : props.defaultPhoneErrorM());
+        return Math.min(raw, props.maxErrorM());
     }
 }
