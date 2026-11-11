@@ -35,6 +35,10 @@ dependencies {
 	testImplementation("org.springframework.boot:spring-boot-starter-flyway-test")
 	testImplementation("org.springframework.boot:spring-boot-starter-validation-test")
 	testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
+	testImplementation("org.springframework.boot:spring-boot-testcontainers")
+	testImplementation("org.testcontainers:testcontainers-junit-jupiter")
+	testImplementation("org.testcontainers:testcontainers-mysql")
+	testImplementation("org.testcontainers:testcontainers-kafka")
 	testCompileOnly("org.projectlombok:lombok")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 	testAnnotationProcessor("org.projectlombok:lombok")
@@ -46,8 +50,4 @@ tasks.withType<Test> {
 		exceptionFormat = TestExceptionFormat.FULL
 		events("failed")
 	}
-	val envFile = rootProject.file(".env")
-	if (envFile.exists()) envFile.readLines()
-		.filter { it.isNotBlank() && !it.startsWith("#") && it.contains("=") }
-		.forEach { val (k, v) = it.split("=", limit = 2); environment(k, v) }
 }
