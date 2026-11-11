@@ -17,14 +17,14 @@ import java.net.URI;
 @Component
 public class RateLimitFilter extends OncePerRequestFilter {
 
-    private static final int LIMIT_PER_SECOND = 10;
-
     private final RateLimiter limiter;
     private final ObjectMapper objectMapper;
+    private final RateLimitProperties props;
 
-    public RateLimitFilter(RateLimiter limiter, ObjectMapper objectMapper) {
+    public RateLimitFilter(RateLimiter limiter, ObjectMapper objectMapper, RateLimitProperties props) {
         this.limiter = limiter;
         this.objectMapper = objectMapper;
+        this.props = props;
     }
 
     @Override
@@ -42,10 +42,11 @@ public class RateLimitFilter extends OncePerRequestFilter {
         }
 
         long count = limiter.hit(equipmentId);
-        if (count > LIMIT_PER_SECOND) {
+        int limit = props.perSecond();
+        if (count > limit) {
             ProblemDetail problem = ProblemDetail.forStatusAndDetail(
                     HttpStatus.TOO_MANY_REQUESTS,
-                    "equipment " + equipmentId + " exceeded " + LIMIT_PER_SECOND + " requests/second");
+                    "equipment " + equipmentId + " exceeded " + limit + " requests/second");
             problem.setInstance(URI.create(request.getRequestURI()));
 
             response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());

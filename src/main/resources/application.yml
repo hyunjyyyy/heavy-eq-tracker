@@ -25,6 +25,16 @@ spring:
     listener:
       ack-mode: record
 
+tracker:
+  rate-limit:
+    per-second: 10
+  proximity:
+    threshold-m: 10
+    max-error-m: 10          # 이보다 큰 오차는 이 값으로 자른다
+    stale-after: 10m         # 상대의 마지막 위치가 이보다 오래되면 후보에서 뺀다
+    default-phone-error-m: 5
+    default-rtk-error-m: 0.05
+
 logging:
   level:
     org.hibernate.SQL: DEBUG
