@@ -15,7 +15,8 @@
                                           ├─ EquipmentRepository.existsById         (없으면 404)
                                           └─ LocationEventProducer ──▶ Kafka location-events (파티션 3, 키 = equipmentId)
                                                                            │
-                                                 LocationEventConsumer ◀───┘  (그룹 tracker-judge, 처리 → 커밋)
+                                                 LocationEventConsumer ◀───┘  (그룹 tracker-judge, 처리 → 커밋,
+                                                   │                             실패 시 1~10초 간격 재시도 → location-events-dlt)
                                                    └▶ LocationEventWriter  @Transactional
                                                         ├─ findByIdempotencyKey → 있으면 건너뜀 (재소비 멱등)
                                                         ├─ INSERT location_event
@@ -24,8 +25,7 @@
                                                         │    └▶ ProximityService  장비 간 NEAR/CLEAR
                                                         └─ publish LocationRecorded
                                                              └▶ LatestLocationCache  @TransactionalEventListener(AFTER_COMMIT)
-                                                                  ├─ Redis SET loc:{id} JSON EX 86400
-                                                                  └─ Redis GEOADD fleet
+                                                                  └─ Lua: recordedAt이 더 클 때만 loc:{id} JSON·loc:{id}:ts·GEO fleet 갱신
 
 조회 ──▶ GET /api/v1/equipment                 현황 (GEO fleet member + loc:* MGET + 현재 구역)
      ──▶ GET /api/v1/equipment/{id}/latest     loc:{id} → 없으면 DB 최신 1건 → 캐시 채움
@@ -37,6 +37,9 @@
 - 멱등 처리는 두 군데다. API의 Redis 선점(TTL 10분)과 컨슈머의 DB 조회 + UNIQUE. HTTP 재전송과 Kafka 재소비가 같은 장치를 쓴다.
 - 판정은 위치 저장과 **같은 트랜잭션**이다. 판정이 실패하면 위치 행도 롤백되고, 컨슈머가 다시 받는다.
 - Redis는 DB 트랜잭션 **밖**에서만 건드린다. 캐시·GEO 갱신은 커밋 뒤 리스너, 선점 해제는 실패 시 `DEL`.
+- 캐시는 늦게 도착한 옛 위치에 덮이지 않는다. 컨슈머와 조회 API의 캐시 미스 채우기가 같은 키에 쓰므로 비교와 쓰기를 Lua 한 번으로 한다. ([#23 결정 1](https://github.com/hyunjyyyy/heavy-eq-tracker/issues/23))
+- 처리 못 한 메시지는 버리지 않는다. 잠깐 실패는 재시도(약 35초)로 버티고, 깨진 JSON·없는 장비는 재시도 없이 DLT로 간다. (#23 결정 4)
+- 속도 제한·근접 값은 `application.yml`의 `tracker.*`에서 바꾼다. 잘못된 값이면 기동이 실패한다. (#23 결정 2)
 - `location` 패키지는 판정 패키지(`zone`, `proximity`)를 모른다. 이벤트만 발행하고 판정 쪽이 듣는다. ([#24](https://github.com/hyunjyyyy/heavy-eq-tracker/issues/24))
 
 ### 판정
@@ -174,5 +177,5 @@ Flyway `src/main/resources/db/migration/`, 표당 파일 하나(MySQL DDL은 트
 
 ## 남은 것
 
-- 늦게 도착한 옛 위치가 최신 캐시를 덮는 문제(Lua 비교), 한도·임계값 설정 외부화, 처리 못 한 메시지 DLT ([#23](https://github.com/hyunjyyyy/heavy-eq-tracker/issues/23))
-- 다음 프로젝트: 폐차 장비의 GEO member 정리, 인증
+- 근접 NEAR/CLEAR를 실제로 만드는 통합 시험
+- 다음 프로젝트: 폐차 장비의 GEO member 정리, DLT 재처리 도구, 인증 ([#23](https://github.com/hyunjyyyy/heavy-eq-tracker/issues/23))
