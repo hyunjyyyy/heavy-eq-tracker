@@ -1,6 +1,6 @@
 # heavy-eq-tracker
 
-Spring Boot·Kotlin 학습용 사이드 프로젝트다. 코드만큼 **내가 무엇을 알게 됐는지**가 산출물이다.
+Spring Boot·Java 학습용 사이드 프로젝트다. 코드만큼 **내가 무엇을 알게 됐는지**가 산출물이다.
 
 ## 학습 기록 (`study-log/`)
 

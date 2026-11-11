@@ -4,6 +4,7 @@ import io.github.hyunjyyyy.heavyeqtracker.equipment.PositioningSource;
 import io.github.hyunjyyyy.heavyeqtracker.location.LatestLocation;
 import io.github.hyunjyyyy.heavyeqtracker.location.LatestLocationCache;
 import io.github.hyunjyyyy.heavyeqtracker.location.LocationEvent;
+import io.github.hyunjyyyy.heavyeqtracker.zone.GeoMath;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.geo.Distance;
@@ -15,9 +16,11 @@ import org.springframework.data.redis.domain.geo.GeoReference;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 @Service
@@ -26,9 +29,11 @@ public class ProximityService {
     private static final Logger log = LoggerFactory.getLogger(ProximityService.class);
 
     static final double THRESHOLD_M = 10.0;
-    static final double SEARCH_RADIUS_M = 25.0;
+    static final double MAX_ERROR_M = 10.0;                                 // 오차 상한
+    static final double SEARCH_RADIUS_M = THRESHOLD_M + 2 * MAX_ERROR_M;    // 30 m. 임계값이 반경을 넘을 수 없다
     static final double DEFAULT_PHONE_ERROR_M = 5.0;
     static final double DEFAULT_RTK_ERROR_M = 0.05;
+    static final Duration STALE_AFTER = Duration.ofMinutes(10);             // 이보다 오래된 상대 위치는 후보에서 제외
 
     private final StringRedisTemplate redis;
     private final LatestLocationCache cache;
@@ -48,14 +53,14 @@ public class ProximityService {
         Long me = event.getEquipment().getId();
         double myError = errorOf(event.getHorizontalAccuracyM(), event.getEquipment().getPositioningSource());
 
-        // 1. 반경 안 후보를 Redis GEO에서. 자기 위치는 아직 GEO에 없으니 좌표로 검색
+        // 1. 반경 안 후보 (GEO). 자기 좌표로 검색, 자기 자신 제외
         GeoResults<RedisGeoCommands.GeoLocation<String>> results = redis.opsForGeo().search(
                 LatestLocationCache.FLEET_KEY,
                 GeoReference.fromCoordinate(event.getLon(), event.getLat()),
                 new Distance(SEARCH_RADIUS_M, RedisGeoCommands.DistanceUnit.METERS),
-                RedisGeoCommands.GeoSearchCommandArgs.newGeoSearchArgs().includeDistance());
+                RedisGeoCommands.GeoSearchCommandArgs.newGeoSearchArgs());
 
-        // 2. 정확한 임계값(오차 합)으로 거른다
+        // 2. 후보마다: 최신 위치가 있고 신선한지 → 원본 좌표로 거리 재계산 → 오차 합 임계
         Map<Long, Double> nearNow = new HashMap<>();
         if (results != null) {
             for (GeoResult<RedisGeoCommands.GeoLocation<String>> r : results) {
@@ -63,10 +68,13 @@ public class ProximityService {
                 if (other.equals(me)) {
                     continue;
                 }
-                double distance = r.getDistance().getValue();   // METERS
-                double otherError = cache.get(other)
-                        .map(l -> errorOf(l.horizontalAccuracyM(), l.positioningSource()))
-                        .orElse(DEFAULT_PHONE_ERROR_M);
+                Optional<LatestLocation> latest = cache.get(other);
+                if (latest.isEmpty() || latest.get().recordedAt().isBefore(event.getRecordedAt().minus(STALE_AFTER))) {
+                    continue;   // 유령 장비(loc 만료) 또는 오래된 위치
+                }
+                LatestLocation l = latest.get();
+                double distance = GeoMath.distanceMeters(event.getLat(), event.getLon(), l.lat(), l.lon());
+                double otherError = errorOf(l.horizontalAccuracyM(), l.positioningSource());
                 if (distance < THRESHOLD_M + myError + otherError) {
                     nearNow.put(other, distance);
                 }
@@ -91,18 +99,20 @@ public class ProximityService {
         for (Long other : nearBefore) {
             if (!nearNow.containsKey(other)) {
                 long a = Math.min(me, other), b = Math.max(me, other);
+                Double distance = cache.get(other)
+                        .map(l -> GeoMath.distanceMeters(event.getLat(), event.getLon(), l.lat(), l.lon()))
+                        .orElse(null);
                 eventRepository.save(new ProximityEvent(a, b, event.getId(), ProximityEventType.CLEAR,
-                        -1, event.getRecordedAt()));
+                        distance, event.getRecordedAt()));
                 pairRepository.deleteByEquipmentAIdAndEquipmentBId(a, b);
-                log.info("CLEAR {}-{}", a, b);
+                log.info("CLEAR {}-{} distance={}", a, b, distance == null ? "unknown" : String.format("%.2fm", distance));
             }
         }
     }
 
     static double errorOf(Double horizontalAccuracyM, PositioningSource source) {
-        if (horizontalAccuracyM != null) {
-            return horizontalAccuracyM;
-        }
-        return source == PositioningSource.PHONE_RTK ? DEFAULT_RTK_ERROR_M : DEFAULT_PHONE_ERROR_M;
+        double raw = horizontalAccuracyM != null ? horizontalAccuracyM
+                : (source == PositioningSource.PHONE_RTK ? DEFAULT_RTK_ERROR_M : DEFAULT_PHONE_ERROR_M);
+        return Math.min(raw, MAX_ERROR_M);
     }
 }

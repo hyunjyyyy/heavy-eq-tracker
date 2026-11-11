@@ -1,6 +1,8 @@
 package io.github.hyunjyyyy.heavyeqtracker.location;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -21,7 +23,7 @@ public class LocationController {
 
     @PostMapping
     public ResponseEntity<LocationAccepted> report(
-            @RequestHeader("Idempotency-Key") String idempotencyKey,
+            @RequestHeader("Idempotency-Key") @NotBlank @Size(max = 64) String idempotencyKey,
             @RequestHeader("X-Equipment-Id") Long equipmentIdHeader,
             @Valid @RequestBody LocationReport report) {
         if (!equipmentIdHeader.equals(report.equipmentId())) {
