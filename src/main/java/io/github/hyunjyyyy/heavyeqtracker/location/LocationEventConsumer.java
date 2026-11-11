@@ -21,7 +21,7 @@ public class LocationEventConsumer {
         this.objectMapper = objectMapper;
     }
 
-    @KafkaListener(topics = KafkaTopicConfig.LOCATION_EVENTS, groupId = "tracker-judge")
+    @KafkaListener(topics = KafkaTopicConfig.LOCATION_EVENTS)
     public void onMessage(ConsumerRecord<String, String> record) {
         log.info("consume partition={} offset={} key={}", record.partition(), record.offset(), record.key());
         LocationMessage message = objectMapper.readValue(record.value(), LocationMessage.class);

@@ -29,8 +29,8 @@ public class ProximityEvent {
     @Column(nullable = false, length = 10)
     private ProximityEventType type;
 
-    @Column(name = "distance_m", nullable = false)
-    private double distanceM;
+    @Column(name = "distance_m")
+    private Double distanceM;
 
     @Column(name = "recorded_at", nullable = false)
     private Instant recordedAt;
@@ -39,7 +39,7 @@ public class ProximityEvent {
     private Instant createdAt;
 
     public ProximityEvent(Long equipmentAId, Long equipmentBId, Long locationEventId,
-                          ProximityEventType type, double distanceM, Instant recordedAt) {
+                          ProximityEventType type, Double distanceM, Instant recordedAt) {
         this.equipmentAId = equipmentAId;
         this.equipmentBId = equipmentBId;
         this.locationEventId = locationEventId;
