@@ -20,12 +20,27 @@ public final class SiteContext {
     }
 
     /* 끝나면 이전 값으로 되돌린다. 안 지우면 이 스레드를 다시 쓰는 다음 요청·메시지가 이 현장으로 처리된다. */
-    public static <T> T call(long siteId, Supplier<T> work) {
+    public static Scope enter(long siteId) {
         Long previous = CURRENT.get();
         CURRENT.set(siteId);
-        try {
+        return new Scope(previous);
+    }
+
+    public static <T> T call(long siteId, Supplier<T> work) {
+        try (Scope ignored = enter(siteId)) {
             return work.get();
-        } finally {
+        }
+    }
+
+    public static final class Scope implements AutoCloseable {
+        private final Long previous;
+
+        private Scope(Long previous) {
+            this.previous = previous;
+        }
+
+        @Override
+        public void close() {
             if (previous == null) {
                 CURRENT.remove();
             } else {

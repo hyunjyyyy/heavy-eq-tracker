@@ -44,14 +44,14 @@ class LatestLocationOrderIT extends IntegrationTest {
 
         report(id, NEW_LAT, t.plusSeconds(5));
         await().atMost(Duration.ofSeconds(10)).pollInterval(Duration.ofMillis(200))
-                .untilAsserted(() -> mvc.perform(get("/api/v1/equipment/{id}/latest", id))
+                .untilAsserted(() -> mvc.perform(get("/api/v1/sites/1/equipment/{id}/latest", id))
                         .andExpect(jsonPath("$.lat").value(NEW_LAT)));
 
         String late = report(id, OLD_LAT, t);   // 5초 전에 찍혔는데 지금 도착
         await().atMost(Duration.ofSeconds(10)).pollInterval(Duration.ofMillis(200))
                 .until(() -> eventRepository.findByIdempotencyKey(late).isPresent());
 
-        mvc.perform(get("/api/v1/equipment/{id}/latest", id))
+        mvc.perform(get("/api/v1/sites/1/equipment/{id}/latest", id))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.lat").value(NEW_LAT));
         List<Point> geo = redis.opsForGeo().position(LatestLocationCache.fleetKey(1L), String.valueOf(id));

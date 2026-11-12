@@ -37,7 +37,7 @@ class IngestIT extends IntegrationTest {
 
         await().atMost(Duration.ofSeconds(10))
                 .pollInterval(Duration.ofMillis(200))
-                .untilAsserted(() -> mvc.perform(get("/api/v1/equipment/{id}/latest", id))
+                .untilAsserted(() -> mvc.perform(get("/api/v1/sites/1/equipment/{id}/latest", id))
                         .andExpect(status().isOk())
                         .andExpect(jsonPath("$.lat").value(37.5665)));
     }
