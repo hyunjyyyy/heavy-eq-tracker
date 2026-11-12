@@ -41,9 +41,7 @@ class GeofenceIT extends IntegrationTest {
     void outInOutRecordsEnterThenExit() throws Exception {
         Long zoneId = zoneRepository.save(new Zone("test-site", ZoneKind.WORK, SQUARE)).getId();
         zoneCatalog.reload();
-        Long equipmentId = equipmentRepository
-                .save(new Equipment("test-excavator", EquipmentType.EXCAVATOR, PositioningSource.PHONE))
-                .getId();
+        Long equipmentId = newEquipment();
 
         Instant t = Instant.now();
         report(equipmentId, 37.5700, 126.9780, t);                                // 밖 (북쪽 약 200 m)

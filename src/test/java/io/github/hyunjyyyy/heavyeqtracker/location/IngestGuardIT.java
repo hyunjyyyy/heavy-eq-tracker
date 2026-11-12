@@ -62,12 +62,6 @@ class IngestGuardIT extends IntegrationTest {
                 .until(() -> eventRepository.count() == 10);
     }
 
-    private Long newEquipment() {
-        return equipmentRepository
-                .save(new Equipment("test-excavator", EquipmentType.EXCAVATOR, PositioningSource.PHONE))
-                .getId();
-    }
-
     private ResultActions report(Long id, String key) throws Exception {
         String body = """
                 {"equipmentId": %d, "lat": 37.5665, "lon": 126.9780,

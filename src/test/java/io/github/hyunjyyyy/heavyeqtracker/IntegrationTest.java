@@ -1,5 +1,11 @@
 package io.github.hyunjyyyy.heavyeqtracker;
 
+import io.github.hyunjyyyy.heavyeqtracker.equipment.Equipment;
+import io.github.hyunjyyyy.heavyeqtracker.equipment.EquipmentRepository;
+import io.github.hyunjyyyy.heavyeqtracker.equipment.EquipmentType;
+import io.github.hyunjyyyy.heavyeqtracker.equipment.PositioningSource;
+import io.github.hyunjyyyy.heavyeqtracker.site.EquipmentSiteAssignment;
+import io.github.hyunjyyyy.heavyeqtracker.site.EquipmentSiteAssignmentRepository;
 import io.github.hyunjyyyy.heavyeqtracker.zone.ZoneCatalog;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,6 +16,7 @@ import org.springframework.data.redis.connection.RedisConnection;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.jdbc.core.JdbcTemplate;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -36,6 +43,7 @@ public abstract class IntegrationTest {
         List<String> sql = new ArrayList<>();
         sql.add("SET FOREIGN_KEY_CHECKS = 0");
         TABLES.forEach(t -> sql.add("TRUNCATE TABLE " + t));
+        sql.add("DELETE FROM site WHERE id <> 1");   // 기본 현장은 Flyway가 넣은 것
         sql.add("SET FOREIGN_KEY_CHECKS = 1");
         jdbc.batchUpdate(sql.toArray(String[]::new));
 
@@ -43,5 +51,21 @@ public abstract class IntegrationTest {
             c.serverCommands().flushAll();
         }
         zoneCatalog.reload();
+    }
+
+    @Autowired private EquipmentRepository equipmentRepository;
+    @Autowired private EquipmentSiteAssignmentRepository assignmentRepository;
+
+    /** 장비를 만들고 2000-01-01부터 끝없이 이 현장에 배정한다 */
+    protected Long newEquipment(long siteId) {
+        Long id = equipmentRepository
+                .save(new Equipment("test-excavator", EquipmentType.EXCAVATOR, PositioningSource.PHONE))
+                .getId();
+        assignmentRepository.save(new EquipmentSiteAssignment(id, siteId, Instant.parse("2000-01-01T00:00:00Z"), null));
+        return id;
+    }
+
+    protected Long newEquipment() {
+        return newEquipment(1L);
     }
 }

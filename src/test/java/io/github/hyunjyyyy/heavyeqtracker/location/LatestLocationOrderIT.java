@@ -73,12 +73,6 @@ class LatestLocationOrderIT extends IntegrationTest {
         return new LatestLocation(id, lat, LON, null, null, FixType.SINGLE, 3.0, recordedAt, PositioningSource.PHONE);
     }
 
-    private Long newEquipment() {
-        return equipmentRepository
-                .save(new Equipment("test-excavator", EquipmentType.EXCAVATOR, PositioningSource.PHONE))
-                .getId();
-    }
-
     private String report(Long id, double lat, Instant recordedAt) throws Exception {
         String key = UUID.randomUUID().toString();
         String body = """

@@ -16,7 +16,7 @@ public class ConsumerErrorConfig {
     @Bean
     public DefaultErrorHandler kafkaErrorHandler(KafkaTemplate<String, String> template) {
         DefaultErrorHandler handler = new DefaultErrorHandler(new DeadLetterPublishingRecoverer(template), retryBackOff());
-        handler.addNotRetryableExceptions(JacksonException.class, EquipmentNotFoundException.class);
+        handler.addNotRetryableExceptions(JacksonException.class, EquipmentNotFoundException.class, MissingSiteIdException.class);
         return handler;
     }
 
