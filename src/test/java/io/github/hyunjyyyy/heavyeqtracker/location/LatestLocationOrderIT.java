@@ -54,7 +54,7 @@ class LatestLocationOrderIT extends IntegrationTest {
         mvc.perform(get("/api/v1/equipment/{id}/latest", id))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.lat").value(NEW_LAT));
-        List<Point> geo = redis.opsForGeo().position(LatestLocationCache.FLEET_KEY, String.valueOf(id));
+        List<Point> geo = redis.opsForGeo().position(LatestLocationCache.fleetKey(1L), String.valueOf(id));
         assertThat(geo.get(0).getY()).isCloseTo(NEW_LAT, within(1e-4));
     }
 
@@ -70,7 +70,7 @@ class LatestLocationOrderIT extends IntegrationTest {
     }
 
     private static LatestLocation latest(Long id, double lat, Instant recordedAt) {
-        return new LatestLocation(id, lat, LON, null, null, FixType.SINGLE, 3.0, recordedAt, PositioningSource.PHONE);
+        return new LatestLocation(id, 1L, lat, LON, null, null, FixType.SINGLE, 3.0, recordedAt, PositioningSource.PHONE);
     }
 
     private String report(Long id, double lat, Instant recordedAt) throws Exception {

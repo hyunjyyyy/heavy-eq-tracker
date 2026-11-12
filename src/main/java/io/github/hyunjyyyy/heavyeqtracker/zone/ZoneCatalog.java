@@ -1,5 +1,6 @@
 package io.github.hyunjyyyy.heavyeqtracker.zone;
 
+import io.github.hyunjyyyy.heavyeqtracker.site.SiteContext;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -7,7 +8,9 @@ import org.springframework.stereotype.Component;
 import tools.jackson.databind.ObjectMapper;
 
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 @Component
 public class ZoneCatalog {
@@ -16,25 +19,28 @@ public class ZoneCatalog {
 
     private final ZoneRepository zoneRepository;
     private final ObjectMapper objectMapper;
-    private final AtomicReference<List<ZoneShape>> active = new AtomicReference<>(List.of());
+    private final AtomicReference<Map<Long, List<ZoneShape>>> active = new AtomicReference<>(Map.of());
 
     public ZoneCatalog(ZoneRepository zoneRepository, ObjectMapper objectMapper) {
         this.zoneRepository = zoneRepository;
         this.objectMapper = objectMapper;
     }
 
+    /* 전 현장 구역을 읽어야 해서 현장 조건 없이(root) 읽는다. 기동 때는 현재 현장이 없다 */
     @PostConstruct
     public void reload() {
-        List<ZoneShape> shapes = zoneRepository.findAll().stream()
+        List<Zone> zones = SiteContext.call(SiteContext.ROOT, zoneRepository::findAll);
+        Map<Long, List<ZoneShape>> bySite = zones.stream()
                 .filter(Zone::isActive)
-                .map(this::toShape)
-                .toList();
-        active.set(shapes);
-        log.info("zone catalog loaded: {} active zones", shapes.size());
+                .collect(Collectors.groupingBy(Zone::getSiteId,
+                        Collectors.mapping(this::toShape, Collectors.toList())));
+        active.set(bySite);
+        log.info("zone catalog loaded: {} sites, {} active zones",
+                bySite.size(), bySite.values().stream().mapToInt(List::size).sum());
     }
 
-    public List<ZoneShape> active() {
-        return active.get();
+    public List<ZoneShape> active(long siteId) {
+        return active.get().getOrDefault(siteId, List.of());
     }
 
     private ZoneShape toShape(Zone zone) {

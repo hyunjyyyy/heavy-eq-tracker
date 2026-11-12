@@ -20,7 +20,9 @@ public class LatestLocationCache {
     private static final Logger log = LoggerFactory.getLogger(LatestLocationCache.class);
     private static final Duration TTL = Duration.ofHours(24);
 
-    public static final String FLEET_KEY = "fleet";
+    public static String fleetKey(long siteId) {
+        return "fleet:" + siteId;
+    }
 
     /* 조회 API의 캐시 미스 채우기(HTTP 스레드)와 컨슈머가 같이 쓰므로 비교와 쓰기를 한 번에 한다. */
     private static final DefaultRedisScript<Long> PUT_IF_NEWER = new DefaultRedisScript<>("""
@@ -53,7 +55,7 @@ public class LatestLocationCache {
     public boolean put(LatestLocation latest) {
         String json = objectMapper.writeValueAsString(latest);
         String key = keyOf(latest.equipmentId());
-        Long applied = redis.execute(PUT_IF_NEWER, List.of(key, key + ":ts", FLEET_KEY),
+        Long applied = redis.execute(PUT_IF_NEWER, List.of(key, key + ":ts", fleetKey(latest.siteId())),
                 json, String.valueOf(micros(latest.recordedAt())), String.valueOf(TTL.toSeconds()),
                 String.valueOf(latest.lon()), String.valueOf(latest.lat()), String.valueOf(latest.equipmentId()));
         return applied != null && applied == 1;
