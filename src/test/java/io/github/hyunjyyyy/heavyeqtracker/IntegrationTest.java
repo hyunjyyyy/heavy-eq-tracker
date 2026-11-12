@@ -6,7 +6,11 @@ import io.github.hyunjyyyy.heavyeqtracker.equipment.EquipmentType;
 import io.github.hyunjyyyy.heavyeqtracker.equipment.PositioningSource;
 import io.github.hyunjyyyy.heavyeqtracker.site.EquipmentSiteAssignment;
 import io.github.hyunjyyyy.heavyeqtracker.site.EquipmentSiteAssignmentRepository;
+import io.github.hyunjyyyy.heavyeqtracker.site.SiteContext;
 import io.github.hyunjyyyy.heavyeqtracker.zone.ZoneCatalog;
+import org.awaitility.Awaitility;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -40,6 +44,7 @@ public abstract class IntegrationTest {
        ZoneCatalog는 구역을 메모리에 들고 있어 표를 비운 뒤 다시 읽힌다. */
     @BeforeEach
     void cleanUp() {
+        siteScope = SiteContext.enter(1L);   // 시험은 현장 1에서 돈다. 정하지 않으면 아무것도 안 보인다(NONE)
         List<String> sql = new ArrayList<>();
         sql.add("SET FOREIGN_KEY_CHECKS = 0");
         TABLES.forEach(t -> sql.add("TRUNCATE TABLE " + t));
@@ -67,5 +72,19 @@ public abstract class IntegrationTest {
 
     protected Long newEquipment() {
         return newEquipment(1L);
+    }
+
+    private SiteContext.Scope siteScope;
+
+    /* Awaitility 조건식은 기본으로 다른 스레드에서 돈다. 현재 현장은 ThreadLocal이라 따라가지 않아
+       조건이 늘 빈 결과를 본다 → 시험 스레드에서 돌게 한다 */
+    @BeforeAll
+    static void pollInTestThread() {
+        Awaitility.pollInSameThread();
+    }
+
+    @AfterEach
+    void leaveSite() {
+        siteScope.close();
     }
 }
