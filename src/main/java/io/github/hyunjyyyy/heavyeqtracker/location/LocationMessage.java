@@ -5,6 +5,7 @@ import java.time.Instant;
 public record LocationMessage(
         String idempotencyKey,
         Long equipmentId,
+        Long siteId,
         double lat,
         double lon,
         Double speedKmh,
@@ -14,8 +15,8 @@ public record LocationMessage(
         Instant recordedAt,
         Instant receivedAt
 ) {
-    static LocationMessage of(LocationReport r, String idempotencyKey) {
-        return new LocationMessage(idempotencyKey, r.equipmentId(), r.lat(), r.lon(),
+    static LocationMessage of(LocationReport r, String idempotencyKey, long siteId) {
+        return new LocationMessage(idempotencyKey, r.equipmentId(), siteId, r.lat(), r.lon(),
                 r.speedKmh(), r.heading(), r.fixType(), r.horizontalAccuracyM(),
                 r.recordedAt(), Instant.now());
     }

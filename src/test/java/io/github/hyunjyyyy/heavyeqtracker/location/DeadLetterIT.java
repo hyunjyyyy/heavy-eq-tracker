@@ -34,15 +34,12 @@ class DeadLetterIT extends IntegrationTest {
     @Autowired MockMvc mvc;
     @Autowired KafkaTemplate<String, String> kafka;
     @Autowired ConsumerFactory<?, ?> consumerFactory;
-    @Autowired EquipmentRepository equipmentRepository;
     @Autowired LocationEventRepository eventRepository;
 
     @Test
     @SuppressWarnings("unchecked")
     void brokenJsonGoesToDltWithoutRetryAndPartitionKeepsFlowing() throws Exception {
-        Long id = equipmentRepository
-                .save(new Equipment("test-excavator", EquipmentType.EXCAVATOR, PositioningSource.PHONE))
-                .getId();
+        Long id = newEquipment();
 
         kafka.send(KafkaTopicConfig.LOCATION_EVENTS, String.valueOf(id), "{broken").join();   // API를 거치지 않은 독
         String next = report(id);                                                              // 같은 키 = 같은 파티션, 독 뒤에 줄 섬

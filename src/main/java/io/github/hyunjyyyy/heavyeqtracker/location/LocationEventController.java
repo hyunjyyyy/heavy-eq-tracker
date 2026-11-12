@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/v1/events")
+@RequestMapping("/api/v1/sites/{siteId:\\d+}/events")
 public class LocationEventController {
 
     private final LocationHistoryService history;

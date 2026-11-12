@@ -1,0 +1,1 @@
+ALTER TABLE equipment_zone_presence ALTER COLUMN site_id DROP DEFAULT, ALGORITHM=INSTANT;

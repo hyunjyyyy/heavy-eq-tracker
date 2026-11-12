@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.TenantId;
 
 import java.time.Instant;
 
@@ -15,6 +16,10 @@ public class ProximityEvent {
 
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @TenantId
+    @Column(name = "site_id", nullable = false, updatable = false)
+    private Long siteId;
 
     @Column(name = "equipment_a_id", nullable = false)
     private Long equipmentAId;

@@ -2,6 +2,8 @@ package io.github.hyunjyyyy.heavyeqtracker.common;
 
 import io.github.hyunjyyyy.heavyeqtracker.location.EquipmentIdMismatchException;
 import io.github.hyunjyyyy.heavyeqtracker.equipment.EquipmentNotFoundException;
+import io.github.hyunjyyyy.heavyeqtracker.location.NoSiteAssignmentException;
+import io.github.hyunjyyyy.heavyeqtracker.site.SiteNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -18,5 +20,15 @@ public class ApiExceptionHandler {
     @ExceptionHandler(EquipmentIdMismatchException.class)
     public ProblemDetail equipmentIdMismatch(EquipmentIdMismatchException e) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, e.getMessage());
+    }
+
+    @ExceptionHandler(NoSiteAssignmentException.class)
+    public ProblemDetail noSiteAssignment(NoSiteAssignmentException e) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.UNPROCESSABLE_CONTENT, e.getMessage());
+    }
+
+    @ExceptionHandler(SiteNotFoundException.class)
+    public ProblemDetail siteNotFound(SiteNotFoundException e) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, e.getMessage());
     }
 }

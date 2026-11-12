@@ -44,17 +44,17 @@ class LatestLocationOrderIT extends IntegrationTest {
 
         report(id, NEW_LAT, t.plusSeconds(5));
         await().atMost(Duration.ofSeconds(10)).pollInterval(Duration.ofMillis(200))
-                .untilAsserted(() -> mvc.perform(get("/api/v1/equipment/{id}/latest", id))
+                .untilAsserted(() -> mvc.perform(get("/api/v1/sites/1/equipment/{id}/latest", id))
                         .andExpect(jsonPath("$.lat").value(NEW_LAT)));
 
         String late = report(id, OLD_LAT, t);   // 5초 전에 찍혔는데 지금 도착
         await().atMost(Duration.ofSeconds(10)).pollInterval(Duration.ofMillis(200))
                 .until(() -> eventRepository.findByIdempotencyKey(late).isPresent());
 
-        mvc.perform(get("/api/v1/equipment/{id}/latest", id))
+        mvc.perform(get("/api/v1/sites/1/equipment/{id}/latest", id))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.lat").value(NEW_LAT));
-        List<Point> geo = redis.opsForGeo().position(LatestLocationCache.FLEET_KEY, String.valueOf(id));
+        List<Point> geo = redis.opsForGeo().position(LatestLocationCache.fleetKey(1L), String.valueOf(id));
         assertThat(geo.get(0).getY()).isCloseTo(NEW_LAT, within(1e-4));
     }
 
@@ -70,13 +70,7 @@ class LatestLocationOrderIT extends IntegrationTest {
     }
 
     private static LatestLocation latest(Long id, double lat, Instant recordedAt) {
-        return new LatestLocation(id, lat, LON, null, null, FixType.SINGLE, 3.0, recordedAt, PositioningSource.PHONE);
-    }
-
-    private Long newEquipment() {
-        return equipmentRepository
-                .save(new Equipment("test-excavator", EquipmentType.EXCAVATOR, PositioningSource.PHONE))
-                .getId();
+        return new LatestLocation(id, 1L, lat, LON, null, null, FixType.SINGLE, 3.0, recordedAt, PositioningSource.PHONE);
     }
 
     private String report(Long id, double lat, Instant recordedAt) throws Exception {

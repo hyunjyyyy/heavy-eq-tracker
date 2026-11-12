@@ -28,9 +28,8 @@ public class FleetStatusService {
         this.presenceRepository = presenceRepository;
     }
 
-    public List<EquipmentStatus> fleet() {
-        // 1. GEO 키는 내부가 Sorted Set → member 목록 = 위치를 보낸 적 있는 장비 id
-        Set<String> ids = redis.opsForZSet().range(LatestLocationCache.FLEET_KEY, 0, -1);
+    public List<EquipmentStatus> fleet(long siteId) {
+        Set<String> ids = redis.opsForZSet().range(LatestLocationCache.fleetKey(siteId), 0, -1);
         if (ids == null || ids.isEmpty()) {
             return List.of();
         }

@@ -54,7 +54,7 @@ public class ProximityService {
 
         // 1. 반경 안 후보 (GEO). 자기 좌표로 검색, 자기 자신 제외
         GeoResults<RedisGeoCommands.GeoLocation<String>> results = redis.opsForGeo().search(
-                LatestLocationCache.FLEET_KEY,
+                LatestLocationCache.fleetKey(event.getSiteId()),
                 GeoReference.fromCoordinate(event.getLon(), event.getLat()),
                 new Distance(props.searchRadiusM(),RedisGeoCommands.DistanceUnit.METERS),
                 RedisGeoCommands.GeoSearchCommandArgs.newGeoSearchArgs());

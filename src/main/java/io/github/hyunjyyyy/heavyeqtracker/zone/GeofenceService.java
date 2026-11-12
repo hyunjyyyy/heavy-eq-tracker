@@ -35,7 +35,7 @@ public class GeofenceService {
         LocationEvent event = saved.event();
         Long equipmentId = event.getEquipment().getId();
 
-        Set<Long> now = catalog.active().stream()
+        Set<Long> now = catalog.active(event.getSiteId()).stream()
                 .filter(z -> GeoMath.contains(z.polygon(), event.getLat(), event.getLon()))
                 .map(ZoneShape::id)
                 .collect(Collectors.toSet());
