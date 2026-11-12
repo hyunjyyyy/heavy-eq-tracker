@@ -22,7 +22,8 @@ public abstract class IntegrationTest {
     /* 새 표를 만들면 여기에도 넣는다. flyway_schema_history는 넣지 않는다. */
     private static final List<String> TABLES = List.of(
             "proximity_event", "proximity_pair_state", "geofence_event",
-            "equipment_zone_presence", "location_event", "zone", "equipment");
+            "equipment_zone_presence", "location_event", "zone",
+            "equipment_site_assignment", "equipment");
 
     @Autowired private JdbcTemplate jdbc;
     @Autowired private StringRedisTemplate redis;
