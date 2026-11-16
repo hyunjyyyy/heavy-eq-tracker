@@ -5,7 +5,7 @@ import io.github.hyunjyyyy.heavyeqtracker.location.LatestLocation;
 import io.github.hyunjyyyy.heavyeqtracker.location.LatestLocationCache;
 import io.github.hyunjyyyy.heavyeqtracker.location.LocationEvent;
 import io.github.hyunjyyyy.heavyeqtracker.location.LocationSaved;
-import io.github.hyunjyyyy.heavyeqtracker.zone.GeoMath;
+import io.github.hyunjyyyy.heavyeqtracker.common.GeoMath;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;

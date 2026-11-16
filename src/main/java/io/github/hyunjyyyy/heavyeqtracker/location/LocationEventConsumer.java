@@ -1,6 +1,6 @@
 package io.github.hyunjyyyy.heavyeqtracker.location;
 
-import io.github.hyunjyyyy.heavyeqtracker.common.KafkaTopicConfig;
+import io.github.hyunjyyyy.heavyeqtracker.location.pipeline.KafkaTopicConfig;
 import io.github.hyunjyyyy.heavyeqtracker.site.SiteContext;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.slf4j.Logger;

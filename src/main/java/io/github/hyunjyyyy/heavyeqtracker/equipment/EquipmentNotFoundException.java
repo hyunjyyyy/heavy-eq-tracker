@@ -1,6 +1,8 @@
 package io.github.hyunjyyyy.heavyeqtracker.equipment;
 
-public class EquipmentNotFoundException extends RuntimeException {
+import io.github.hyunjyyyy.heavyeqtracker.common.NotFoundException;
+
+public class EquipmentNotFoundException extends NotFoundException {
     public EquipmentNotFoundException(Long id) {
         super("equipment " + id + " not found");
     }

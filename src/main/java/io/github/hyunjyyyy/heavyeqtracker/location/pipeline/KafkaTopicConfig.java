@@ -1,4 +1,4 @@
-package io.github.hyunjyyyy.heavyeqtracker.common;
+package io.github.hyunjyyyy.heavyeqtracker.location.pipeline;
 
 import org.apache.kafka.clients.admin.NewTopic;
 import org.springframework.context.annotation.Bean;

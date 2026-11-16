@@ -1,34 +1,26 @@
 package io.github.hyunjyyyy.heavyeqtracker.common;
 
-import io.github.hyunjyyyy.heavyeqtracker.location.EquipmentIdMismatchException;
-import io.github.hyunjyyyy.heavyeqtracker.equipment.EquipmentNotFoundException;
-import io.github.hyunjyyyy.heavyeqtracker.location.NoSiteAssignmentException;
-import io.github.hyunjyyyy.heavyeqtracker.site.SiteNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+/* 기능 모듈의 예외를 하나하나 알지 않는다. 바탕 클래스로 상태 코드를 정한다(#40 결정 2) */
 @RestControllerAdvice
 public class ApiExceptionHandler {
 
-    @ExceptionHandler(EquipmentNotFoundException.class)
-    public ProblemDetail equipmentNotFound(EquipmentNotFoundException e) {
+    @ExceptionHandler(NotFoundException.class)
+    public ProblemDetail notFound(NotFoundException e) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, e.getMessage());
     }
 
-    @ExceptionHandler(EquipmentIdMismatchException.class)
-    public ProblemDetail equipmentIdMismatch(EquipmentIdMismatchException e) {
-        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, e.getMessage());
-    }
-
-    @ExceptionHandler(NoSiteAssignmentException.class)
-    public ProblemDetail noSiteAssignment(NoSiteAssignmentException e) {
+    @ExceptionHandler(UnprocessableException.class)
+    public ProblemDetail unprocessable(UnprocessableException e) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.UNPROCESSABLE_CONTENT, e.getMessage());
     }
 
-    @ExceptionHandler(SiteNotFoundException.class)
-    public ProblemDetail siteNotFound(SiteNotFoundException e) {
-        return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, e.getMessage());
+    @ExceptionHandler(BadRequestException.class)
+    public ProblemDetail badRequest(BadRequestException e) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, e.getMessage());
     }
 }

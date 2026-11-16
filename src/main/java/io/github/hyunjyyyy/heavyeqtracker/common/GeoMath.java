@@ -1,4 +1,4 @@
-package io.github.hyunjyyyy.heavyeqtracker.zone;
+package io.github.hyunjyyyy.heavyeqtracker.common;
 
 public final class GeoMath {
 

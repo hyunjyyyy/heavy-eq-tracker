@@ -1,5 +1,6 @@
 package io.github.hyunjyyyy.heavyeqtracker.zone;
 
+import io.github.hyunjyyyy.heavyeqtracker.common.GeoMath;
 import io.github.hyunjyyyy.heavyeqtracker.location.LocationEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

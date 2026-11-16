@@ -5,20 +5,21 @@ plugins {
 	id("org.springframework.boot") version "4.1.2"
 	id("io.spring.dependency-management") version "1.1.7"
 }
-
 group = "io.github.hyunjyyyy"
 version = "0.0.1-SNAPSHOT"
-
 java {
 	toolchain {
 		languageVersion = JavaLanguageVersion.of(21)
 	}
 }
-
 repositories {
 	mavenCentral()
 }
-
+dependencyManagement {
+	imports {
+		mavenBom("org.springframework.modulith:spring-modulith-bom:2.1.2")
+	}
+}
 dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-data-jpa")
 	implementation("org.springframework.boot:spring-boot-starter-flyway")
@@ -27,6 +28,7 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-data-redis")
 	implementation("org.flywaydb:flyway-mysql")
 	implementation("org.springframework.boot:spring-boot-starter-kafka")
+	implementation("org.springframework.modulith:spring-modulith-api")
 	compileOnly("org.projectlombok:lombok")
 	developmentOnly("org.springframework.boot:spring-boot-docker-compose")
 	runtimeOnly("com.mysql:mysql-connector-j")
@@ -39,11 +41,11 @@ dependencies {
 	testImplementation("org.testcontainers:testcontainers-junit-jupiter")
 	testImplementation("org.testcontainers:testcontainers-mysql")
 	testImplementation("org.testcontainers:testcontainers-kafka")
+	testImplementation("org.springframework.modulith:spring-modulith-starter-test")
 	testCompileOnly("org.projectlombok:lombok")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 	testAnnotationProcessor("org.projectlombok:lombok")
 }
-
 tasks.withType<Test> {
 	useJUnitPlatform()
 	testLogging {

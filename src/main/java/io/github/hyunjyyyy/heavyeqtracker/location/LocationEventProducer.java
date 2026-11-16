@@ -1,6 +1,6 @@
 package io.github.hyunjyyyy.heavyeqtracker.location;
 
-import io.github.hyunjyyyy.heavyeqtracker.common.KafkaTopicConfig;
+import io.github.hyunjyyyy.heavyeqtracker.location.pipeline.KafkaTopicConfig;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.ObjectMapper;

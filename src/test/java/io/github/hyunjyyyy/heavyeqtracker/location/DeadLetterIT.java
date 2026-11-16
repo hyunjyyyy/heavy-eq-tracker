@@ -1,7 +1,7 @@
 package io.github.hyunjyyyy.heavyeqtracker.location;
 
 import io.github.hyunjyyyy.heavyeqtracker.IntegrationTest;
-import io.github.hyunjyyyy.heavyeqtracker.common.KafkaTopicConfig;
+import io.github.hyunjyyyy.heavyeqtracker.location.pipeline.KafkaTopicConfig;
 import io.github.hyunjyyyy.heavyeqtracker.equipment.Equipment;
 import io.github.hyunjyyyy.heavyeqtracker.equipment.EquipmentRepository;
 import io.github.hyunjyyyy.heavyeqtracker.equipment.EquipmentType;
