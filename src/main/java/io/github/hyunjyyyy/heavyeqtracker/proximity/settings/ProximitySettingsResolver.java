@@ -1,4 +1,4 @@
-package io.github.hyunjyyyy.heavyeqtracker.proximity;
+package io.github.hyunjyyyy.heavyeqtracker.proximity.settings;
 
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;

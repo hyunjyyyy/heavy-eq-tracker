@@ -1,4 +1,4 @@
-package io.github.hyunjyyyy.heavyeqtracker.proximity;
+package io.github.hyunjyyyy.heavyeqtracker.proximity.settings;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;

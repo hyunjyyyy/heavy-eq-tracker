@@ -1,4 +1,4 @@
-package io.github.hyunjyyyy.heavyeqtracker.proximity;
+package io.github.hyunjyyyy.heavyeqtracker.proximity.settings;
 
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;

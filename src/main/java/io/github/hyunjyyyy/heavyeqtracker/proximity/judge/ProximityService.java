@@ -1,4 +1,7 @@
-package io.github.hyunjyyyy.heavyeqtracker.proximity;
+package io.github.hyunjyyyy.heavyeqtracker.proximity.judge;
+
+import io.github.hyunjyyyy.heavyeqtracker.proximity.settings.ProximitySettingsResolver;
+import io.github.hyunjyyyy.heavyeqtracker.proximity.settings.ProximityProperties;
 
 import io.github.hyunjyyyy.heavyeqtracker.equipment.PositioningSource;
 import io.github.hyunjyyyy.heavyeqtracker.location.latest.LatestLocation;

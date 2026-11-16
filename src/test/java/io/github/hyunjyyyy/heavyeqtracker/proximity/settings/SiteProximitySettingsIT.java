@@ -1,4 +1,4 @@
-package io.github.hyunjyyyy.heavyeqtracker.proximity;
+package io.github.hyunjyyyy.heavyeqtracker.proximity.settings;
 
 import io.github.hyunjyyyy.heavyeqtracker.IntegrationTest;
 import io.github.hyunjyyyy.heavyeqtracker.location.latest.LatestLocationCache;

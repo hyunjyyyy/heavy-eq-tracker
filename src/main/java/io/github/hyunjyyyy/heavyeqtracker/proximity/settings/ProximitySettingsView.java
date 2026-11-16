@@ -1,4 +1,4 @@
-package io.github.hyunjyyyy.heavyeqtracker.proximity;
+package io.github.hyunjyyyy.heavyeqtracker.proximity.settings;
 
 public record ProximitySettingsView(ProximitySettingsRequest overrides, Effective effective) {
 

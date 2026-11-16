@@ -4,7 +4,7 @@ import io.github.hyunjyyyy.heavyeqtracker.equipment.Equipment;
 import io.github.hyunjyyyy.heavyeqtracker.equipment.EquipmentRepository;
 import io.github.hyunjyyyy.heavyeqtracker.equipment.EquipmentType;
 import io.github.hyunjyyyy.heavyeqtracker.equipment.PositioningSource;
-import io.github.hyunjyyyy.heavyeqtracker.proximity.ProximitySettingsResolver;
+import io.github.hyunjyyyy.heavyeqtracker.proximity.settings.ProximitySettingsResolver;
 import io.github.hyunjyyyy.heavyeqtracker.site.EquipmentSiteAssignment;
 import io.github.hyunjyyyy.heavyeqtracker.site.EquipmentSiteAssignmentRepository;
 import io.github.hyunjyyyy.heavyeqtracker.site.SiteContext;

@@ -1,4 +1,4 @@
-package io.github.hyunjyyyy.heavyeqtracker.proximity;
+package io.github.hyunjyyyy.heavyeqtracker.proximity.judge;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
