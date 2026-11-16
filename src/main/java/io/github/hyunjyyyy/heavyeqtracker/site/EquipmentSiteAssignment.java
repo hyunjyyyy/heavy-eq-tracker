@@ -34,4 +34,8 @@ public class EquipmentSiteAssignment {
         this.assignedFrom = assignedFrom;
         this.assignedTo = assignedTo;
     }
+
+    public void close(Instant at) {
+        this.assignedTo = at;
+    }
 }

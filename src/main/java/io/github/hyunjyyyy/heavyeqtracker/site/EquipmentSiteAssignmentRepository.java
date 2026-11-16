@@ -16,4 +16,5 @@ public interface EquipmentSiteAssignmentRepository extends JpaRepository<Equipme
               and (a.assignedTo is null or a.assignedTo > :at)
             """)
     Optional<EquipmentSiteAssignment> findAt(Long equipmentId, Instant at);
+    Optional<EquipmentSiteAssignment> findByEquipmentIdAndAssignedToIsNull(Long equipmentId);
 }

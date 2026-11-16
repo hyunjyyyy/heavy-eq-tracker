@@ -27,7 +27,7 @@ public class GeofenceEvent {
     @Column(name = "zone_id", nullable = false)
     private Long zoneId;
 
-    @Column(name = "location_event_id", nullable = false)
+    @Column(name = "location_event_id")
     private Long locationEventId;
 
     @Enumerated(EnumType.STRING)

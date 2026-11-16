@@ -27,7 +27,7 @@ public class ProximityEvent {
     @Column(name = "equipment_b_id", nullable = false)
     private Long equipmentBId;
 
-    @Column(name = "location_event_id", nullable = false)
+    @Column(name = "location_event_id")
     private Long locationEventId;
 
     @Enumerated(EnumType.STRING)
