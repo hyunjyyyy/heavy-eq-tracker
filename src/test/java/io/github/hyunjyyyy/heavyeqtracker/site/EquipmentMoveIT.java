@@ -101,6 +101,29 @@ class EquipmentMoveIT extends IntegrationTest {
         move(siteB, id, 1).andExpect(status().isConflict());    // 지금 그 현장에 없음
     }
 
+    @Test
+    void locationOfOldSiteArrivingAfterMoveIsRecordedButNotJudged() throws Exception {
+        long siteB = siteRepository.save(new Site("test-site-b")).getId();
+        zoneRepository.save(new Zone("yard", ZoneKind.WORK, SQUARE));   // 현장 1 구역
+        zoneCatalog.reload();
+        Long mover = newEquipment();
+        Long stayer = newEquipment();
+        report(stayer, 37.56653);
+        await().atMost(Duration.ofSeconds(10)).pollInterval(Duration.ofMillis(200))
+                .until(() -> count("SELECT COUNT(*) FROM equipment_zone_presence WHERE equipment_id = ?", stayer) == 1);
+
+        Instant beforeMove = Instant.now();
+        move(1, mover, siteB).andExpect(status().isOk());
+        String late = reportAt(mover, 37.56650, beforeMove.minusSeconds(1));   // 현장 1에서 찍혀 이동 뒤 도착, stayer 옆 3 m
+        await().atMost(Duration.ofSeconds(10)).pollInterval(Duration.ofMillis(200))
+                .until(() -> count("SELECT COUNT(*) FROM location_event WHERE idempotency_key = ? AND site_id = 1", late) == 1);
+
+        assertThat(count("SELECT COUNT(*) FROM equipment_zone_presence WHERE equipment_id = ?", mover)).isZero();
+        assertThat(count("SELECT COUNT(*) FROM proximity_pair_state")).isZero();
+        assertThat(redis.opsForZSet().score(LatestLocationCache.fleetKey(1L), String.valueOf(mover))).isNull();
+        assertThat(count("SELECT COUNT(*) FROM equipment_zone_presence WHERE equipment_id = ?", stayer)).isEqualTo(1);   // 대조군
+    }
+
     /* 스레드마다 현재 현장이 비어 있어 옛 현장(1)을 직접 정한다 — 인터셉터가 하는 일 */
     private Callable<String> attempt(CountDownLatch start, Long id, long to) {
         return () -> {
@@ -125,15 +148,21 @@ class EquipmentMoveIT extends IntegrationTest {
     }
 
     private void report(Long id, double lat) throws Exception {
+        reportAt(id, lat, Instant.now());
+    }
+
+    private String reportAt(Long id, double lat, Instant recordedAt) throws Exception {
+        String key = UUID.randomUUID().toString();
         String body = """
                 {"equipmentId": %d, "lat": %s, "lon": 126.9780,
                  "fixType": "SINGLE", "horizontalAccuracyM": 3.0, "recordedAt": "%s"}
-                """.formatted(id, lat, Instant.now());
+                """.formatted(id, lat, recordedAt);
         mvc.perform(post("/api/v1/locations")
-                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .header("Idempotency-Key", key)
                         .header("X-Equipment-Id", id)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isAccepted());
+        return key;
     }
 }
