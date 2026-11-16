@@ -5,6 +5,7 @@ import io.github.hyunjyyyy.heavyeqtracker.location.latest.LatestLocation;
 import io.github.hyunjyyyy.heavyeqtracker.location.latest.LatestLocationCache;
 import io.github.hyunjyyyy.heavyeqtracker.location.LocationEvent;
 import io.github.hyunjyyyy.heavyeqtracker.location.LocationSaved;
+import io.github.hyunjyyyy.heavyeqtracker.site.EquipmentMoved;
 import io.github.hyunjyyyy.heavyeqtracker.common.GeoMath;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -106,6 +107,17 @@ public class ProximityService {
                 pairRepository.deleteByEquipmentAIdAndEquipmentBId(a, b);
                 log.info("CLEAR {}-{} distance={}", a, b, distance == null ? "unknown" : String.format("%.2fm", distance));
             }
+        }
+    }
+
+    @EventListener
+    @Transactional
+    public void onEquipmentMoved(EquipmentMoved moved) {
+        Long me = moved.equipmentId();
+        for (ProximityPairState s : pairRepository.findAllByEquipmentAIdOrEquipmentBId(me, me)) {
+            eventRepository.save(new ProximityEvent(s.getEquipmentAId(), s.getEquipmentBId(), null,
+                    ProximityEventType.CLEAR, null, moved.movedAt()));
+            pairRepository.delete(s);
         }
     }
 

@@ -52,7 +52,7 @@
 |---|---|---|
 | `common` | 예외 바탕(404·422·400)과 처리기, 거리 계산 | 전부. **다른 모듈을 의존하지 않는다**(`allowedDependencies = {}`) |
 | `equipment` | 장비 | 전부 |
-| `site` | 현장, 배정 이력, 현재 현장(`SiteContext`), 경로 인터셉터 | 전부 |
+| `site` | 현장, 배정 이력, 현재 현장(`SiteContext`), 경로 인터셉터, 장비 이동(`EquipmentMoved` 발행) | 전부 |
 | `location` | 위치 수집·저장·캐시·이력 | `LocationEvent`, `FixType`, `LocationSaved`, `location::latest`(`LatestLocation`, `LatestLocationCache`), `location::history`(`LocationHistoryService`, `LocationEventView`) |
 | `zone` | 구역, 지오펜스 판정 | 전부 |
 | `proximity` | 근접 판정 | 전부 |
@@ -67,6 +67,9 @@
 - 위치의 현장은 **찍힌 시각**의 배정으로 정한다. 끊겼다가 장비를 옮긴 뒤에 도착한 위치도 찍힌 곳의 현장으로 간다. (#30 결정 1)
 - `@TenantId`는 DB만 막는다. Redis는 GEO 키를 현장별(`fleet:{siteId}`)로 두고, 장비 단위 `loc:{id}`는 꺼낸 값의 `siteId`로 거른다.
 - Redis는 DB 사본이라 기동 때 최근 24시간 장비별 최신 위치로 다시 채운다. (#30 결정 4)
+- **장비 이동**: 옛 현장 경로로 `POST …/move`를 받으면 장비 행을 잠그고, 옛 배정을 닫고, 새 배정을 열고, `EquipmentMoved`를 발행한다. 같은 트랜잭션에서 옛 현장의 구역 체류는 EXIT, 근접 쌍은 CLEAR로 닫고(원인 위치 없음), 커밋 뒤 `fleet:{옛 현장}`에서 뺀다. `site`는 다른 모듈을 모르고 이벤트만 낸다. ([#31](https://github.com/hyunjyyyy/heavy-eq-tracker/issues/31))
+- 이동 뒤에 도착한 옛 현장 위치(이동 전에 찍힘)는 옛 현장으로 **기록만** 하고 판정·캐시하지 않는다. 정리한 체류·쌍·GEO가 되살아나지 않게. 저장도 이동과 같은 장비 잠금을 잡아 둘이 섞이지 않는다. (#31 결정 2)
+- 장비당 열린 배정은 하나. 이동은 장비 행 잠금으로 줄 세우고, DB 유일 제약이 안전망이다. (#31 결정 4)
 
 ### 판정
 
@@ -156,6 +159,16 @@ Docker만 켜져 있으면 된다. compose와 `.env`는 필요 없다. 시험이
 
 없는 현장은 404. `limit`은 기본 100, 1~1000으로 자른다. 권한은 아직 없다([#36](https://github.com/hyunjyyyy/heavy-eq-tracker/issues/36)).
 
+### `POST /api/v1/sites/{fromSiteId}/equipment/{id}/move` — 장비 현장 이동
+
+바디 `{"toSiteId": 2}`. 이동 시각은 서버가 요청을 받은 시각이다(과거·미래 지정 없음).
+
+| 응답 | 뜻 |
+|---|---|
+| 200 `{"equipmentId", "siteId", "assignedFrom"}` | 새 배정 |
+| 404 | 장비 또는 옮길 현장 없음 |
+| 409 | 장비가 지금 `fromSiteId`에 없음, 같은 현장으로 옮김, 동시 이동에서 늦은 쪽 |
+
 ## 데이터
 
 Flyway `src/main/resources/db/migration/`, 표당 파일 하나(MySQL DDL은 트랜잭션에 안 들어가므로).
@@ -166,12 +179,12 @@ Flyway `src/main/resources/db/migration/`, 표당 파일 하나(MySQL DDL은 트
 |---|---|
 | `site` | `name` UNIQUE. id 1 = 기본 현장(Flyway) |
 | `equipment` | `type`, `positioning_source`(PHONE / PHONE_RTK). 현장을 가로지른다 |
-| `equipment_site_assignment` | 장비의 현장 배정 이력 `[assigned_from, assigned_to)`, 끝이 비면 지금도 배정 중 |
+| `equipment_site_assignment` | 장비의 현장 배정 이력 `[assigned_from, assigned_to)`, 끝이 비면 지금도 배정 중. 장비당 열린 배정 하나(생성 열 `open_marker` + 유일 인덱스) |
 | `zone` ★ | `kind`(WORK / DANGER), `polygon` JSON `[[lat, lon], ...]`, `active` |
 | `location_event` ★ | `equipment_id` FK, `lat`/`lon` DOUBLE, `fix_type`, `h_accuracy_m`, `recorded_at`(단말) / `received_at`(API 수신) DATETIME(6) UTC, `idempotency_key` UNIQUE. 인덱스 `(equipment_id, recorded_at)`, `(site_id, recorded_at)` |
-| `geofence_event` ★ | ENTER/EXIT, 원인 `location_event_id` |
+| `geofence_event` ★ | ENTER/EXIT, 원인 `location_event_id`(NULL = 장비 이동으로 닫힘) |
 | `equipment_zone_presence` ★ | 장비가 지금 들어가 있는 구역 |
-| `proximity_event` ★ | NEAR/CLEAR, 장비 쌍(작은 id, 큰 id), `distance_m` |
+| `proximity_event` ★ | NEAR/CLEAR, 장비 쌍(작은 id, 큰 id), `distance_m`, 원인 `location_event_id`(NULL = 장비 이동으로 닫힘) |
 | `proximity_pair_state` ★ | 지금 근접 중인 쌍 |
 
 ## 측정한 것
@@ -212,10 +225,11 @@ Flyway `src/main/resources/db/migration/`, 표당 파일 하나(MySQL DDL은 트
 | [#23](https://github.com/hyunjyyyy/heavy-eq-tracker/issues/23) | 남겨 둔 것 처리 방침 |
 | [#24](https://github.com/hyunjyyyy/heavy-eq-tracker/issues/24) | 코드 검수 반영: 멱등키 길이, 근접 반경·유령 장비, 패키지 순환 |
 | [#30](https://github.com/hyunjyyyy/heavy-eq-tracker/issues/30) | 현장 모델: 위치의 현장 시점, `@TenantId`, 열 추가 순서, Redis 재구성, 현장 경로·본사, 현장 미지정 시 fail-closed |
+| [#31](https://github.com/hyunjyyyy/heavy-eq-tracker/issues/31) | 장비 현장 이동: 이동 시각·경로, 이동 뒤 도착한 위치는 기록만, 동기 이벤트로 정리, 잠금 + 열린 배정 하나, 원인 위치 NULL |
 | [#40](https://github.com/hyunjyyyy/heavy-eq-tracker/issues/40) | 모듈 경계: `location` 하위 패키지, 클래스 단위 named interface, `common` 예외 바탕 클래스 |
 
 날짜별 학습 기록은 `study-log/`. 사고 과정 정리(`docs/`)는 작성 중.
 
 ## 남은 것
 
-이슈 #31~#39. 순서: 장비 현장 이동(#31) → 현장별 설정(#32) → 시뮬레이터·부하 측정(#33) → 안드로이드 단말(#34) → 근접 알림(#35) → 인증·권한(#36) → 관제 화면(#37) → 돌려보기(#38) → 히트맵(#39).
+이슈 #32~#39. 순서: 현장별 설정(#32) → 시뮬레이터·부하 측정(#33) → 안드로이드 단말(#34) → 근접 알림(#35) → 인증·권한(#36) → 관제 화면(#37) → 돌려보기(#38) → 히트맵(#39).

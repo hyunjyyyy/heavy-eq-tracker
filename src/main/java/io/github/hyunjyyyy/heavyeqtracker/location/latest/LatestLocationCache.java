@@ -1,5 +1,6 @@
 package io.github.hyunjyyyy.heavyeqtracker.location.latest;
 
+import io.github.hyunjyyyy.heavyeqtracker.site.EquipmentMoved;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -79,5 +80,9 @@ public class LatestLocationCache {
 
     private String keyOf(Long equipmentId) {
         return "loc:" + equipmentId;
+    }
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onEquipmentMoved(EquipmentMoved moved) {
+        redis.opsForZSet().remove(fleetKey(moved.fromSiteId()), String.valueOf(moved.equipmentId()));
     }
 }

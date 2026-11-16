@@ -7,11 +7,13 @@ import io.github.hyunjyyyy.heavyeqtracker.equipment.EquipmentType;
 import io.github.hyunjyyyy.heavyeqtracker.equipment.PositioningSource;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import java.time.Duration;
 import java.time.Instant;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
 class EquipmentSiteAssignmentIT extends IntegrationTest {
 
@@ -38,5 +40,15 @@ class EquipmentSiteAssignmentIT extends IntegrationTest {
                 .extracting(EquipmentSiteAssignment::getSiteId).isEqualTo(1L);
         assertThat(assignments.findAt(equipmentId, moved)).get()                     // 이동 시각부터 새 현장
                 .extracting(EquipmentSiteAssignment::getSiteId).isEqualTo(siteB);
+    }
+
+    @Test
+    void secondOpenAssignmentIsRejectedByDb() {
+        Long equipmentId = newEquipment();                                  // 현장 1에 열린 배정 하나
+        Long siteB = siteRepository.save(new Site("test-site-b")).getId();
+
+        assertThatThrownBy(() -> assignments.saveAndFlush(
+                new EquipmentSiteAssignment(equipmentId, siteB, Instant.now(), null)))
+                .isInstanceOf(DataIntegrityViolationException.class);
     }
 }

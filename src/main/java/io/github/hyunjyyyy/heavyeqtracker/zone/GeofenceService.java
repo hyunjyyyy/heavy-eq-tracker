@@ -2,6 +2,7 @@ package io.github.hyunjyyyy.heavyeqtracker.zone;
 
 import io.github.hyunjyyyy.heavyeqtracker.common.GeoMath;
 import io.github.hyunjyyyy.heavyeqtracker.location.LocationEvent;
+import io.github.hyunjyyyy.heavyeqtracker.site.EquipmentMoved;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
@@ -61,6 +62,15 @@ public class GeofenceService {
                     GeofenceEventType.EXIT, event.getRecordedAt()));
             presenceRepository.deleteByEquipmentIdAndZoneId(equipmentId, zoneId);
             log.info("EXIT equipment={} zone={}", equipmentId, zoneId);
+        }
+    }
+    @EventListener
+    @Transactional
+    public void onEquipmentMoved(EquipmentMoved moved) {
+        for (EquipmentZonePresence p : presenceRepository.findAllByEquipmentId(moved.equipmentId())) {
+            eventRepository.save(new GeofenceEvent(moved.equipmentId(), p.getZoneId(), null,
+                    GeofenceEventType.EXIT, moved.movedAt()));
+            presenceRepository.delete(p);
         }
     }
 }
