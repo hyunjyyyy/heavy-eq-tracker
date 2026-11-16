@@ -41,7 +41,7 @@
 - Redis는 DB 트랜잭션 **밖**에서만 건드린다. 캐시·GEO 갱신은 커밋 뒤 리스너, 선점 해제는 실패 시 `DEL`.
 - 캐시는 늦게 도착한 옛 위치에 덮이지 않는다. 컨슈머와 조회 API의 캐시 미스 채우기가 같은 키에 쓰므로 비교와 쓰기를 Lua 한 번으로 한다. ([#23 결정 1](https://github.com/hyunjyyyy/heavy-eq-tracker/issues/23))
 - 처리 못 한 메시지는 버리지 않는다. 잠깐 실패는 재시도(약 35초)로 버티고, 깨진 JSON·없는 장비는 재시도 없이 DLT로 간다. (#23 결정 4)
-- 속도 제한·근접 값은 `application.yml`의 `tracker.*`에서 바꾼다. 잘못된 값이면 기동이 실패한다. (#23 결정 2)
+- 속도 제한·근접 값의 기본은 `application.yml`의 `tracker.*`다. 잘못된 값이면 기동이 실패한다. (#23 결정 2) 근접 값은 현장마다 API로 덮어쓸 수 있고(항목마다, 비우면 기본값), 판정은 합친 값을 메모리에 두고 바뀌면 커밋 뒤 지우며 60초마다 다시 읽는다. 속도 제한은 서버 보호 장치라 현장별로 두지 않는다. ([#32](https://github.com/hyunjyyyy/heavy-eq-tracker/issues/32))
 - `location` 패키지는 판정 패키지(`zone`, `proximity`)를 모른다. 이벤트만 발행하고 판정 쪽이 듣는다. ([#24](https://github.com/hyunjyyyy/heavy-eq-tracker/issues/24))
 
 ### 모듈
@@ -55,7 +55,7 @@
 | `site` | 현장, 배정 이력, 현재 현장(`SiteContext`), 경로 인터셉터, 장비 이동(`EquipmentMoved` 발행) | 전부 |
 | `location` | 위치 수집·저장·캐시·이력 | `LocationEvent`, `FixType`, `LocationSaved`, `location::latest`(`LatestLocation`, `LatestLocationCache`), `location::history`(`LocationHistoryService`, `LocationEventView`) |
 | `zone` | 구역, 지오펜스 판정 | 전부 |
-| `proximity` | 근접 판정 | 전부 |
+| `proximity` | 근접 판정(`judge`), 현장별 근접 설정(`settings`) | 없음 |
 | `status` | 현황, 본사 조회 | 전부 |
 
 `location`은 하는 일별로 나눈다: `ingest`(수집 API·멱등·속도 제한) → `pipeline`(Kafka 발행·소비·저장·DLT) → `latest`(최신 위치 캐시·재구성), `history`(이력 조회), `store`(리포지토리). 하위 패키지끼리도 한 방향만 가리킨다.
@@ -74,7 +74,7 @@
 ### 판정
 
 - **지오펜스**: ray casting 점-다각형. 그 현장 구역만 본다. 장비별 현재 구역(`equipment_zone_presence`)과 비교해 바뀐 것만 `geofence_event`에 ENTER/EXIT로 남긴다. 구역 목록은 기동 시 전 현장을 메모리에 읽는다(`ZoneCatalog`). 구역을 바꾸면 재기동한다.
-- **근접**: 같은 현장끼리만. GEO `fleet:{siteId}`에서 반경 30 m 후보 → 후보의 `loc:`이 없거나 10분 넘게 오래됐으면 제외 → 원본 좌표로 거리 재계산 → `거리 < 10 m + 내 오차 + 상대 오차`면 NEAR. 오차는 `horizontalAccuracyM`(없으면 PHONE 5 m / PHONE_RTK 0.05 m), 상한 10 m. 반경 30 m = 10 + 2×10이라 임계가 반경을 넘을 수 없다. 쌍 상태(`proximity_pair_state`)와 비교해 NEAR/CLEAR 전이만 `proximity_event`에 남긴다.
+- **근접**: 같은 현장끼리만, 그 현장의 설정으로(아래 수치는 yml 기본값). GEO `fleet:{siteId}`에서 반경 30 m 후보 → 후보의 `loc:`이 없거나 10분 넘게 오래됐으면 제외 → 원본 좌표로 거리 재계산 → `거리 < 10 m + 내 오차 + 상대 오차`면 NEAR. 오차는 `horizontalAccuracyM`(없으면 PHONE 5 m / PHONE_RTK 0.05 m), 상한 10 m. 반경 30 m = 10 + 2×10이라 임계가 반경을 넘을 수 없다. 쌍 상태(`proximity_pair_state`)와 비교해 NEAR/CLEAR 전이만 `proximity_event`에 남긴다.
 
 ## 스택
 
@@ -159,6 +159,12 @@ Docker만 켜져 있으면 된다. compose와 `.env`는 필요 없다. 시험이
 
 없는 현장은 404. `limit`은 기본 100, 1~1000으로 자른다. 권한은 아직 없다([#36](https://github.com/hyunjyyyy/heavy-eq-tracker/issues/36)).
 
+### `GET`·`PUT /api/v1/sites/{siteId}/settings/proximity` — 현장 근접 설정
+
+`PUT` 바디는 덮어쓸 값만: `{"thresholdM": 20, "maxErrorM": null, "staleAfterSeconds": null, "defaultPhoneErrorM": null, "defaultRtkErrorM": null}`. `null`이면 yml 기본값을 따른다.
+
+응답 `{"overrides": {현장 값}, "effective": {합친 값 + searchRadiusM}}`. 0 이하 값은 400, 없는 현장은 404. 바꾸면 바로 판정에 반영된다.
+
 ### `POST /api/v1/sites/{fromSiteId}/equipment/{id}/move` — 장비 현장 이동
 
 바디 `{"toSiteId": 2}`. 이동 시각은 서버가 요청을 받은 시각이다(과거·미래 지정 없음).
@@ -186,6 +192,7 @@ Flyway `src/main/resources/db/migration/`, 표당 파일 하나(MySQL DDL은 트
 | `equipment_zone_presence` ★ | 장비가 지금 들어가 있는 구역 |
 | `proximity_event` ★ | NEAR/CLEAR, 장비 쌍(작은 id, 큰 id), `distance_m`, 원인 `location_event_id`(NULL = 장비 이동으로 닫힘) |
 | `proximity_pair_state` ★ | 지금 근접 중인 쌍 |
+| `site_proximity_settings` | 현장별 근접 설정 덮어쓰기(현장 id가 PK, 열이 NULL이면 yml 기본값) |
 
 ## 측정한 것
 
@@ -226,10 +233,11 @@ Flyway `src/main/resources/db/migration/`, 표당 파일 하나(MySQL DDL은 트
 | [#24](https://github.com/hyunjyyyy/heavy-eq-tracker/issues/24) | 코드 검수 반영: 멱등키 길이, 근접 반경·유령 장비, 패키지 순환 |
 | [#30](https://github.com/hyunjyyyy/heavy-eq-tracker/issues/30) | 현장 모델: 위치의 현장 시점, `@TenantId`, 열 추가 순서, Redis 재구성, 현장 경로·본사, 현장 미지정 시 fail-closed |
 | [#31](https://github.com/hyunjyyyy/heavy-eq-tracker/issues/31) | 장비 현장 이동: 이동 시각·경로, 이동 뒤 도착한 위치는 기록만, 동기 이벤트로 정리, 잠금 + 열린 배정 하나, 원인 위치 NULL |
+| [#32](https://github.com/hyunjyyyy/heavy-eq-tracker/issues/32) | 현장별 설정: 캐시 + 커밋 뒤 무효화 + TTL, 합친 설정이 반경 계산, 속도 제한은 전체 하나 |
 | [#40](https://github.com/hyunjyyyy/heavy-eq-tracker/issues/40) | 모듈 경계: `location` 하위 패키지, 클래스 단위 named interface, `common` 예외 바탕 클래스 |
 
 날짜별 학습 기록은 `study-log/`. 사고 과정 정리(`docs/`)는 작성 중.
 
 ## 남은 것
 
-이슈 #32~#39. 순서: 현장별 설정(#32) → 시뮬레이터·부하 측정(#33) → 안드로이드 단말(#34) → 근접 알림(#35) → 인증·권한(#36) → 관제 화면(#37) → 돌려보기(#38) → 히트맵(#39).
+이슈 #33~#39. 순서: 시뮬레이터·부하 측정(#33) → 안드로이드 단말(#34) → 근접 알림(#35) → 인증·권한(#36) → 관제 화면(#37) → 돌려보기(#38) → 히트맵(#39).
