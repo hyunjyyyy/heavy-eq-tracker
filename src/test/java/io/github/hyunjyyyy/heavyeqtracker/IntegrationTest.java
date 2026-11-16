@@ -4,6 +4,7 @@ import io.github.hyunjyyyy.heavyeqtracker.equipment.Equipment;
 import io.github.hyunjyyyy.heavyeqtracker.equipment.EquipmentRepository;
 import io.github.hyunjyyyy.heavyeqtracker.equipment.EquipmentType;
 import io.github.hyunjyyyy.heavyeqtracker.equipment.PositioningSource;
+import io.github.hyunjyyyy.heavyeqtracker.proximity.settings.ProximitySettingsResolver;
 import io.github.hyunjyyyy.heavyeqtracker.site.EquipmentSiteAssignment;
 import io.github.hyunjyyyy.heavyeqtracker.site.EquipmentSiteAssignmentRepository;
 import io.github.hyunjyyyy.heavyeqtracker.site.SiteContext;
@@ -34,7 +35,7 @@ public abstract class IntegrationTest {
     private static final List<String> TABLES = List.of(
             "proximity_event", "proximity_pair_state", "geofence_event",
             "equipment_zone_presence", "location_event", "zone",
-            "equipment_site_assignment", "equipment");
+            "equipment_site_assignment", "equipment", "site_proximity_settings");
 
     @Autowired private JdbcTemplate jdbc;
     @Autowired private StringRedisTemplate redis;
@@ -56,10 +57,12 @@ public abstract class IntegrationTest {
             c.serverCommands().flushAll();
         }
         zoneCatalog.reload();
+        proximitySettings.clear();   // 메모리 캐시는 표를 비워도 남는다
     }
 
     @Autowired private EquipmentRepository equipmentRepository;
     @Autowired private EquipmentSiteAssignmentRepository assignmentRepository;
+    @Autowired private ProximitySettingsResolver proximitySettings;
 
     /** 장비를 만들고 2000-01-01부터 끝없이 이 현장에 배정한다 */
     protected Long newEquipment(long siteId) {

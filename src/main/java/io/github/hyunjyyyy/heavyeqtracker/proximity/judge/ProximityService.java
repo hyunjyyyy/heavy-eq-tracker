@@ -1,4 +1,7 @@
-package io.github.hyunjyyyy.heavyeqtracker.proximity;
+package io.github.hyunjyyyy.heavyeqtracker.proximity.judge;
+
+import io.github.hyunjyyyy.heavyeqtracker.proximity.settings.ProximitySettingsResolver;
+import io.github.hyunjyyyy.heavyeqtracker.proximity.settings.ProximityProperties;
 
 import io.github.hyunjyyyy.heavyeqtracker.equipment.PositioningSource;
 import io.github.hyunjyyyy.heavyeqtracker.location.latest.LatestLocation;
@@ -34,24 +37,25 @@ public class ProximityService {
     private final LatestLocationCache cache;
     private final ProximityEventRepository eventRepository;
     private final ProximityPairStateRepository pairRepository;
-    private final ProximityProperties props;
+    private final ProximitySettingsResolver settings;
 
     public ProximityService(StringRedisTemplate redis, LatestLocationCache cache,
                             ProximityEventRepository eventRepository, ProximityPairStateRepository pairRepository,
-                            ProximityProperties props) {
+                            ProximitySettingsResolver settings) {
         this.redis = redis;
         this.cache = cache;
         this.eventRepository = eventRepository;
         this.pairRepository = pairRepository;
-        this.props = props;
+        this.settings = settings;
     }
 
     @EventListener
     @Transactional
     public void onLocationSaved(LocationSaved saved) {
         LocationEvent event = saved.event();
+        ProximityProperties props = settings.forSite(event.getSiteId());   // 현장 값 ?? yml 기본값
         Long me = event.getEquipment().getId();
-        double myError = errorOf(event.getHorizontalAccuracyM(), event.getEquipment().getPositioningSource());
+        double myError = errorOf(event.getHorizontalAccuracyM(), event.getEquipment().getPositioningSource(), props);
 
         // 1. 반경 안 후보 (GEO). 자기 좌표로 검색, 자기 자신 제외
         GeoResults<RedisGeoCommands.GeoLocation<String>> results = redis.opsForGeo().search(
@@ -74,7 +78,7 @@ public class ProximityService {
                 }
                 LatestLocation l = latest.get();
                 double distance = GeoMath.distanceMeters(event.getLat(), event.getLon(), l.lat(), l.lon());
-                double otherError = errorOf(l.horizontalAccuracyM(), l.positioningSource());
+                double otherError = errorOf(l.horizontalAccuracyM(), l.positioningSource(), props);
                 if (distance < props.thresholdM() + myError + otherError) {
                     nearNow.put(other, distance);
                 }
@@ -121,7 +125,7 @@ public class ProximityService {
         }
     }
 
-    double errorOf(Double horizontalAccuracyM, PositioningSource source) {
+    static double errorOf(Double horizontalAccuracyM, PositioningSource source, ProximityProperties props) {
         double raw = horizontalAccuracyM != null ? horizontalAccuracyM
                 : (source == PositioningSource.PHONE_RTK ? props.defaultRtkErrorM() : props.defaultPhoneErrorM());
         return Math.min(raw, props.maxErrorM());
