@@ -1,6 +1,6 @@
 package io.github.hyunjyyyy.heavyeqtracker.status;
 
-import io.github.hyunjyyyy.heavyeqtracker.location.LatestLocation;
+import io.github.hyunjyyyy.heavyeqtracker.location.latest.LatestLocation;
 
 import java.util.List;
 

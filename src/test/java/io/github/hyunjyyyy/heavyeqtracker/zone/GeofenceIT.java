@@ -5,7 +5,7 @@ import io.github.hyunjyyyy.heavyeqtracker.equipment.Equipment;
 import io.github.hyunjyyyy.heavyeqtracker.equipment.EquipmentRepository;
 import io.github.hyunjyyyy.heavyeqtracker.equipment.EquipmentType;
 import io.github.hyunjyyyy.heavyeqtracker.equipment.PositioningSource;
-import io.github.hyunjyyyy.heavyeqtracker.location.LocationEventRepository;
+import io.github.hyunjyyyy.heavyeqtracker.location.store.LocationEventRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Sort;

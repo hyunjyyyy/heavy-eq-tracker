@@ -1,6 +1,8 @@
 package io.github.hyunjyyyy.heavyeqtracker.site;
 
-public class SiteNotFoundException extends RuntimeException {
+import io.github.hyunjyyyy.heavyeqtracker.common.NotFoundException;
+
+public class SiteNotFoundException extends NotFoundException {
     public SiteNotFoundException(long siteId) {
         super("site " + siteId + " not found");
     }
