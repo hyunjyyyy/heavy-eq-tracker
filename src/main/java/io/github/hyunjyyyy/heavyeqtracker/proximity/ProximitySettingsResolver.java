@@ -1,6 +1,8 @@
 package io.github.hyunjyyyy.heavyeqtracker.proximity;
 
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -55,5 +57,15 @@ public class ProximitySettingsResolver {
 
     private static double or(Double value, double fallback) {
         return value != null ? value : fallback;
+    }
+
+    ProximityProperties defaults() {
+        return defaults;
+    }
+
+    /* 트랜잭션 안에서 지우면 커밋 전에 다른 스레드가 옛 값을 다시 캐시에 넣을 수 있다 */
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    void onChanged(ProximitySettingsChanged changed) {
+        evict(changed.siteId());
     }
 }

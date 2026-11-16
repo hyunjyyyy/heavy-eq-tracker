@@ -18,6 +18,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 
 class SiteProximitySettingsIT extends IntegrationTest {
 
@@ -54,6 +57,46 @@ class SiteProximitySettingsIT extends IntegrationTest {
 
         assertThat(nearCount(a1, a2)).isEqualTo(1);
         assertThat(nearCount(b1, b2)).isZero();
+    }
+
+    /* 캐시에 기본값(10)을 먼저 올려 두고 바꾼다. 커밋 뒤 무효화가 없으면 60초 동안 옛 값으로 판정해 NEAR가 안 생긴다 */
+    @Test
+    void putTakesEffectImmediately() throws Exception {
+        assertThat(resolver.forSite(1L).thresholdM()).isEqualTo(10.0);   // 캐시에 기본값
+
+        mvc.perform(put("/api/v1/sites/1/settings/proximity")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"thresholdM\": 20}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.overrides.thresholdM").value(20.0))
+                .andExpect(jsonPath("$.overrides.maxErrorM").doesNotExist())
+                .andExpect(jsonPath("$.effective.thresholdM").value(20.0))
+                .andExpect(jsonPath("$.effective.searchRadiusM").value(40.0));
+
+        Long a1 = newEquipment();
+        Long a2 = newEquipment();
+        waitSaved(report(a1, LAT));
+        await().atMost(Duration.ofSeconds(10)).until(() -> cache.get(a1).isPresent());
+        waitSaved(report(a2, LAT_15M_NORTH));
+        assertThat(nearCount(a1, a2)).isEqualTo(1);
+    }
+
+    @Test
+    void invalidValueIsRejectedAndNothingChanges() throws Exception {
+        mvc.perform(put("/api/v1/sites/1/settings/proximity")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"thresholdM\": -1}"))
+                .andExpect(status().isBadRequest());
+
+        mvc.perform(get("/api/v1/sites/1/settings/proximity"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.overrides.thresholdM").doesNotExist())
+                .andExpect(jsonPath("$.effective.thresholdM").value(10.0));
+    }
+
+    @Test
+    void unknownSiteIs404() throws Exception {
+        mvc.perform(get("/api/v1/sites/999/settings/proximity")).andExpect(status().isNotFound());
     }
 
     private long nearCount(Long x, Long y) {
