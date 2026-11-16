@@ -44,6 +44,22 @@
 - 속도 제한·근접 값은 `application.yml`의 `tracker.*`에서 바꾼다. 잘못된 값이면 기동이 실패한다. (#23 결정 2)
 - `location` 패키지는 판정 패키지(`zone`, `proximity`)를 모른다. 이벤트만 발행하고 판정 쪽이 듣는다. ([#24](https://github.com/hyunjyyyy/heavy-eq-tracker/issues/24))
 
+### 모듈
+
+앱 패키지 바로 아래 패키지 하나가 모듈 하나다(Spring Modulith). 모듈의 맨 위 패키지만 다른 모듈이 쓸 수 있고, 하위 패키지는 내부다. `ModularityTest`가 모듈 사이의 순환과 내부 접근을 시험으로 막는다. ([#40](https://github.com/hyunjyyyy/heavy-eq-tracker/issues/40))
+
+| 모듈 | 하는 일 | 다른 모듈에 여는 것 |
+|---|---|---|
+| `common` | 예외 바탕(404·422·400)과 처리기, 거리 계산 | 전부. **다른 모듈을 의존하지 않는다**(`allowedDependencies = {}`) |
+| `equipment` | 장비 | 전부 |
+| `site` | 현장, 배정 이력, 현재 현장(`SiteContext`), 경로 인터셉터 | 전부 |
+| `location` | 위치 수집·저장·캐시·이력 | `LocationEvent`, `FixType`, `LocationSaved`, `location::latest`(`LatestLocation`, `LatestLocationCache`), `location::history`(`LocationHistoryService`, `LocationEventView`) |
+| `zone` | 구역, 지오펜스 판정 | 전부 |
+| `proximity` | 근접 판정 | 전부 |
+| `status` | 현황, 본사 조회 | 전부 |
+
+`location`은 하는 일별로 나눈다: `ingest`(수집 API·멱등·속도 제한) → `pipeline`(Kafka 발행·소비·저장·DLT) → `latest`(최신 위치 캐시·재구성), `history`(이력 조회), `store`(리포지토리). 하위 패키지끼리도 한 방향만 가리킨다.
+
 ### 현장
 
 - 표는 하나로 쓰고 `site_id`로 나눈다. 현장 표 6개는 Hibernate `@TenantId`가 모든 조회에 `site_id = ?`를 붙이고 저장 때 값을 채운다. 현재 현장은 `SiteContext`(`ThreadLocal`)가 들고, 조회는 경로, 컨슈머는 메시지, 시스템 작업은 전 현장(root)으로 정한다. ([#30](https://github.com/hyunjyyyy/heavy-eq-tracker/issues/30))
@@ -196,9 +212,10 @@ Flyway `src/main/resources/db/migration/`, 표당 파일 하나(MySQL DDL은 트
 | [#23](https://github.com/hyunjyyyy/heavy-eq-tracker/issues/23) | 남겨 둔 것 처리 방침 |
 | [#24](https://github.com/hyunjyyyy/heavy-eq-tracker/issues/24) | 코드 검수 반영: 멱등키 길이, 근접 반경·유령 장비, 패키지 순환 |
 | [#30](https://github.com/hyunjyyyy/heavy-eq-tracker/issues/30) | 현장 모델: 위치의 현장 시점, `@TenantId`, 열 추가 순서, Redis 재구성, 현장 경로·본사, 현장 미지정 시 fail-closed |
+| [#40](https://github.com/hyunjyyyy/heavy-eq-tracker/issues/40) | 모듈 경계: `location` 하위 패키지, 클래스 단위 named interface, `common` 예외 바탕 클래스 |
 
 날짜별 학습 기록은 `study-log/`. 사고 과정 정리(`docs/`)는 작성 중.
 
 ## 남은 것
 
-이슈 #31~#40. 순서: 장비 현장 이동(#31) → 현장별 설정(#32) → 시뮬레이터·부하 측정(#33) → 안드로이드 단말(#34) → 근접 알림(#35) → 인증·권한(#36) → 관제 화면(#37) → 돌려보기(#38) → 히트맵(#39). `location` 패키지 정리(#40).
+이슈 #31~#39. 순서: 장비 현장 이동(#31) → 현장별 설정(#32) → 시뮬레이터·부하 측정(#33) → 안드로이드 단말(#34) → 근접 알림(#35) → 인증·권한(#36) → 관제 화면(#37) → 돌려보기(#38) → 히트맵(#39).
