@@ -1,7 +1,7 @@
 package io.github.hyunjyyyy.heavyeqtracker.status;
 
-import io.github.hyunjyyyy.heavyeqtracker.location.LocationEventView;
-import io.github.hyunjyyyy.heavyeqtracker.location.LocationHistoryService;
+import io.github.hyunjyyyy.heavyeqtracker.location.history.LocationEventView;
+import io.github.hyunjyyyy.heavyeqtracker.location.history.LocationHistoryService;
 import io.github.hyunjyyyy.heavyeqtracker.site.SiteRepository;
 import org.springframework.data.domain.Sort;
 import org.springframework.web.bind.annotation.GetMapping;

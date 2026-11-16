@@ -1,7 +1,7 @@
 package io.github.hyunjyyyy.heavyeqtracker.site;
 
 import io.github.hyunjyyyy.heavyeqtracker.IntegrationTest;
-import io.github.hyunjyyyy.heavyeqtracker.location.LatestLocationCache;
+import io.github.hyunjyyyy.heavyeqtracker.location.latest.LatestLocationCache;
 import io.github.hyunjyyyy.heavyeqtracker.zone.Zone;
 import io.github.hyunjyyyy.heavyeqtracker.zone.ZoneCatalog;
 import io.github.hyunjyyyy.heavyeqtracker.zone.ZoneKind;
