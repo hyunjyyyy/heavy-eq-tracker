@@ -8,17 +8,47 @@ import java.util.concurrent.atomic.LongAdder;
 
 final class Stats {
 
+    private final long fromMs;
     private final Map<Integer, LongAdder> byStatus = new ConcurrentHashMap<>();
     private final LongAdder failures = new LongAdder();
     private final ConcurrentLinkedQueue<Long> nanos = new ConcurrentLinkedQueue<>();
+    private final LongAdder late = new LongAdder();
+    private final LongAdder resent = new LongAdder();
+    private final LongAdder offline = new LongAdder();
+
+    /** fromMs 전(예열)에 생긴 일은 세지 않는다 */
+    Stats(long fromMs) {
+        this.fromMs = fromMs;
+    }
+
+    private boolean measuring() {
+        return System.currentTimeMillis() >= fromMs;
+    }
 
     void record(int status, long elapsedNanos) {
+        if (!measuring()) return;
         byStatus.computeIfAbsent(status, k -> new LongAdder()).increment();
         nanos.add(elapsedNanos);
     }
 
     void failure() {
+        if (!measuring()) return;
         failures.increment();
+    }
+
+    void late() {
+        if (!measuring()) return;
+        late.increment();
+    }
+
+    void resent() {
+        if (!measuring()) return;
+        resent.increment();
+    }
+
+    void offline() {
+        if (!measuring()) return;
+        offline.increment();
     }
 
     String summary(long seconds) {
@@ -39,21 +69,5 @@ final class Stats {
 
     private static double ms(long[] sorted, double q) {
         return sorted[(int) Math.min(sorted.length - 1, Math.floor(q * sorted.length))] / 1e6;
-    }
-
-    private final LongAdder late = new LongAdder();
-    private final LongAdder resent = new LongAdder();
-    private final LongAdder offline = new LongAdder();
-
-    void late() {
-        late.increment();
-    }
-
-    void resent() {
-        resent.increment();
-    }
-
-    void offline() {
-        offline.increment();
     }
 }

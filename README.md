@@ -84,6 +84,7 @@
 | MySQL | 9.7 LTS | Flyway 12, JPA/Hibernate 7, `ddl-auto: validate`, `open-in-view: false` |
 | Redis | 8 | `StringRedisTemplate` + JSON 문자열, Lua, GEO |
 | Kafka | 4.1 (KRaft) | `spring-boot-starter-kafka`, 파티션 3 |
+| 지표 | Actuator + Micrometer, Prometheus 3.5 | `/actuator/prometheus`, 시간 지표는 히스토그램 |
 | 로컬 인프라 | Docker Compose + Spring Boot Docker Compose Support | `bootRun`이 컨테이너를 띄운다 |
 | 시험 | JUnit 6, Testcontainers 2, Awaitility | 시험이 자기 MySQL·Redis·Kafka 컨테이너를 띄운다 |
 | CI | GitHub Actions | PR·main 푸시마다 `./gradlew build` |
@@ -122,6 +123,31 @@ Docker만 켜져 있으면 된다. compose와 `.env`는 필요 없다. 시험이
 - 시험마다 `@BeforeEach`에서 표를 비우고 Redis를 `FLUSHALL`한다. 저장은 컨슈머 스레드가 따로 커밋해서 시험 트랜잭션 롤백으로는 지울 수 없다. (#21 결정 2)
 - 비동기 결과는 Awaitility로 최대 10초 기다린다. (#21 결정 3) 조건식은 시험 스레드에서 돈다(`pollInSameThread`). 현재 현장(`ThreadLocal`)이 다른 스레드로 따라가지 않아서다.
 - 시험은 기본으로 현장 1에서 돈다(`IntegrationTest`). 장비는 `newEquipment()`(현장 1 배정 포함). 현장을 가로질러 확인할 땐 JDBC로 센다.
+
+### 시뮬레이터·부하 측정
+
+`simulator/`는 Spring 없는 Gradle 하위 모듈이다. 장비마다 가상 스레드 하나가 시드 고정 경로로 위치를 보낸다. 현장 `100+n`, 장비 `현장id×1000+순번` 규칙을 `dev/seed.sql`과 같이 쓴다.
+
+```powershell
+$OutputEncoding = New-Object System.Text.UTF8Encoding $false   # 5.1은 파이프를 ASCII로 보내 한글 주석이 깨진다
+Get-Content dev\seed.sql | docker exec -i heavy-eq-tracker-mysql-1 mysql -uroot "-p$DB_ROOT_PASSWORD" "$DB_NAME"   # 현장 10 × 장비 100, 다시 돌려도 된다
+.\gradlew.bat bootRun --args="--spring.profiles.active=load"   # 측정용: 로그 WARN
+.\dev\measure.ps1 -SimArgs "sites=1 perSite=100 warmupSec=15 durationSec=60"
+```
+
+| 인자 | 기본 | 뜻 |
+|---|---|---|
+| `sites`, `perSite` | 1, 10 | 현장 수(≤10), 현장당 장비 수(≤100) |
+| `periodMs`, `durationSec`, `warmupSec` | 1000, 30, 0 | 보내는 주기, 측정 구간, 집계에서 뺄 예열 |
+| `seed`, `radiusM` | 42, 300 | 경로 시드, 랜덤 워크 반경 |
+| `lateRate`, `lateMs` | 0, 3000 | 이 비율만큼 이만큼 늦게 보낸다(`recordedAt`은 그대로) |
+| `resendRate` | 0 | 같은 키·본문을 한 번 더 보낸다 |
+| `dropRate`, `dropMs` | 0, 5000 | 끊겼다가 복구될 때 몰아 보낸다. `dropMs`가 길면 속도 제한(10/초)에 걸린다 |
+
+- 판정 지연 지표는 둘이다. `tracker_location_judged_since_received_seconds`(서버가 받은 때부터, 서버 성능)와 `..._since_recorded_seconds`(단말이 잰 때부터, 늦게 오기 포함). Prometheus는 http://localhost:9090
+- 수집 API가 202라 시뮬레이터의 응답 시간은 Kafka에 넣기까지다. 포화돼도 거의 그대로라 판정 지연은 서버 지표로 본다.
+- lag은 `kafka_consumer_fetch_manager_records_lag_max`로 보지 않는다. 컨슈머가 처리에 묶이면 실제 수만 건일 때도 0이 나온다. `measure.ps1`은 그룹 명령(커밋된 오프셋)으로 센다. ([#33 결정 9](https://github.com/hyunjyyyy/heavy-eq-tracker/issues/33))
+- compose에 서비스를 더하면 `bootRun`이 띄우지 않는다. 다른 서비스가 이미 떠 있으면 Boot가 `up`을 건너뛴다. `docker compose up -d prometheus`
 
 ## API
 
@@ -212,6 +238,9 @@ Flyway `src/main/resources/db/migration/`, 표당 파일 하나(MySQL DDL은 트
 | 시험 | 11개 22 s, 컨테이너·앱 기동 1번 14.7 s, 통합 시험 셋 합 3.1 s | [#21](https://github.com/hyunjyyyy/heavy-eq-tracker/issues/21) |
 | CI | 캐시 없음 1분 55초 → 있음 1분 14초 | [#22](https://github.com/hyunjyyyy/heavy-eq-tracker/issues/22) |
 | 현장 열 추가 | 10만 행 `location_event`에 열 추가 + 인덱스 + FK 184 ms(V13), 6개 표 기본값 제거 64 ms(V18~V23). 행을 다시 쓰지 않음(INSTANT) | [#30](https://github.com/hyunjyyyy/heavy-eq-tracker/issues/30) |
+| 재전송 | 10%: 보냄 317, 재전송 27 → DB 290 | [#33](https://github.com/hyunjyyyy/heavy-eq-tracker/issues/33) |
+| 늦게 오기 | 10%(3초), 반경 30 m, 장비 10대 60초: NEAR·CLEAR 86·80 → 112·108, 늦은 위치로 판정된 이벤트 0 → 33 | [#45](https://github.com/hyunjyyyy/heavy-eq-tracker/issues/45) |
+| 부하 | 장비 10 / 100 / 1000대(예열 15초, 60초): 판정 처리 9.7 / 50.0 / 32.9건/초, 판정 지연 p99 0.04 / 45 / 68초, 실행 직후 lag 0 / 3,666 / 약 69,500, 202 p99 20 / 18 / 33 ms. 컨슈머 스레드 하나라 한계 약 50건/초 | #33 |
 
 ## 설계 결정 찾아보기
 
@@ -234,10 +263,11 @@ Flyway `src/main/resources/db/migration/`, 표당 파일 하나(MySQL DDL은 트
 | [#30](https://github.com/hyunjyyyy/heavy-eq-tracker/issues/30) | 현장 모델: 위치의 현장 시점, `@TenantId`, 열 추가 순서, Redis 재구성, 현장 경로·본사, 현장 미지정 시 fail-closed |
 | [#31](https://github.com/hyunjyyyy/heavy-eq-tracker/issues/31) | 장비 현장 이동: 이동 시각·경로, 이동 뒤 도착한 위치는 기록만, 동기 이벤트로 정리, 잠금 + 열린 배정 하나, 원인 위치 NULL |
 | [#32](https://github.com/hyunjyyyy/heavy-eq-tracker/issues/32) | 현장별 설정: 캐시 + 커밋 뒤 무효화 + TTL, 합친 설정이 반경 계산, 속도 제한은 전체 하나 |
+| [#33](https://github.com/hyunjyyyy/heavy-eq-tracker/issues/33) | 시뮬레이터: 하위 모듈, 시드 고정 경로, id 규칙, 시험만 의존, Prometheus·판정 지연 둘, load 프로필, 예열, 포화는 기록만, lag은 그룹 명령, 측정 스크립트 |
 | [#40](https://github.com/hyunjyyyy/heavy-eq-tracker/issues/40) | 모듈 경계: `location` 하위 패키지, 클래스 단위 named interface, `common` 예외 바탕 클래스 |
 
 날짜별 학습 기록은 `study-log/`. 사고 과정 정리(`docs/`)는 작성 중.
 
 ## 남은 것
 
-이슈 #33~#39. 순서: 시뮬레이터·부하 측정(#33) → 안드로이드 단말(#34) → 근접 알림(#35) → 인증·권한(#36) → 관제 화면(#37) → 돌려보기(#38) → 히트맵(#39).
+이슈 #34~#39, #45, #46. #33 측정에서 나온 것: 늦게 도착한 위치 판정(#45), 컨슈머 처리량(#46). 순서: 안드로이드 단말(#34) → 근접 알림(#35) → 인증·권한(#36) → 관제 화면(#37) → 돌려보기(#38) → 히트맵(#39).

@@ -16,10 +16,13 @@ public final class Simulator {
                 .version(HttpClient.Version.HTTP_1_1)
                 .connectTimeout(Duration.ofSeconds(3))
                 .build();
-        Stats stats = new Stats();
         String runId = Long.toString(System.currentTimeMillis(), 36);
         System.out.println("runId " + runId);
-        Instant end = Instant.now().plusSeconds(c.durationSec());
+        Instant from = Instant.now().plusSeconds(c.warmupSec());
+        Instant end = from.plusSeconds(c.durationSec());
+        Stats stats = new Stats(from.toEpochMilli());
+        // Prometheus를 이 구간으로 잘라 쿼리한다
+        System.out.println("measure " + from + " ~ " + end + " end=" + end.getEpochSecond());
 
         try (var exec = Executors.newVirtualThreadPerTaskExecutor()) {
             for (int n = 1; n <= c.sites(); n++) {
