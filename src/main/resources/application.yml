@@ -24,7 +24,17 @@ spring:
       auto-offset-reset: earliest
     listener:
       ack-mode: record
-
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, prometheus
+  metrics:
+    distribution:
+      percentiles-histogram:
+        # 지표 이름에 점이 있어 대괄호로 감싼다. 없으면 점마다 단계로 쪼개져 안 걸린다
+        "[spring.kafka.listener]": true
+        "[tracker.location.judged]": true
 tracker:
   rate-limit:
     per-second: 10
