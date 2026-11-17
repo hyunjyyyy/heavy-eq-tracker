@@ -42,6 +42,7 @@ dependencies {
 	testImplementation("org.testcontainers:testcontainers-mysql")
 	testImplementation("org.testcontainers:testcontainers-kafka")
 	testImplementation("org.springframework.modulith:spring-modulith-starter-test")
+	testImplementation(project(":simulator"))
 	testCompileOnly("org.projectlombok:lombok")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 	testAnnotationProcessor("org.projectlombok:lombok")
