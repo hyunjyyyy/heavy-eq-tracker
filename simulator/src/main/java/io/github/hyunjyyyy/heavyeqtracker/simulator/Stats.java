@@ -28,6 +28,8 @@ final class Stats {
         sb.append("sent ").append(sent).append(" (").append(sent / seconds).append("/s)\n");
         byStatus.forEach((code, n) -> sb.append("  ").append(code).append(": ").append(n.sum()).append('\n'));
         sb.append("  connect/timeout failures: ").append(failures.sum()).append('\n');
+        sb.append("  late ").append(late.sum()).append(", resent ").append(resent.sum())
+                .append(", offline ").append(offline.sum()).append('\n');
         if (l.length > 0) {
             sb.append(String.format(Locale.ROOT, "response ms p50 %.1f / p95 %.1f / p99 %.1f / max %.1f%n",
                     ms(l, 0.50), ms(l, 0.95), ms(l, 0.99), l[l.length - 1] / 1e6));
@@ -37,5 +39,21 @@ final class Stats {
 
     private static double ms(long[] sorted, double q) {
         return sorted[(int) Math.min(sorted.length - 1, Math.floor(q * sorted.length))] / 1e6;
+    }
+
+    private final LongAdder late = new LongAdder();
+    private final LongAdder resent = new LongAdder();
+    private final LongAdder offline = new LongAdder();
+
+    void late() {
+        late.increment();
+    }
+
+    void resent() {
+        resent.increment();
+    }
+
+    void offline() {
+        offline.increment();
     }
 }

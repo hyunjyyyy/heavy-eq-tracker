@@ -18,6 +18,7 @@ public final class Simulator {
                 .build();
         Stats stats = new Stats();
         String runId = Long.toString(System.currentTimeMillis(), 36);
+        System.out.println("runId " + runId);
         Instant end = Instant.now().plusSeconds(c.durationSec());
 
         try (var exec = Executors.newVirtualThreadPerTaskExecutor()) {
@@ -26,7 +27,7 @@ public final class Simulator {
                 GeoProjection geo = new GeoProjection(37.0 + n * 0.1, 127.0);
                 for (int k = 1; k <= c.perSite(); k++) {
                     long equipmentId = siteId * 1000 + k;
-                    var route = new RandomWalkRoute(c.seed() * 1_000_003L + equipmentId, 300, 2);
+                    var route = new RandomWalkRoute(c.seed() * 1_000_003L + equipmentId, c.radiusM(), 2);
                     Device d = new Device(equipmentId, route, geo, http, c, stats, runId);
                     exec.submit(() -> d.run(end));
                 }
