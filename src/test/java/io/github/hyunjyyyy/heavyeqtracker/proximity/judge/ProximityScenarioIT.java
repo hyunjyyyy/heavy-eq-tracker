@@ -91,7 +91,7 @@ class ProximityScenarioIT extends IntegrationTest {
     }
 
     private String send(Long id, Sample s, Instant at) throws Exception {
-        String key =  UUID.randomUUID().toString();
+        String key = UUID.randomUUID().toString();
         String body = """
                 {"equipmentId": %d, "lat": %s, "lon": %s,
                  "fixType": "RTK_FIXED", "horizontalAccuracyM": 0.05, "recordedAt": "%s"}
@@ -105,7 +105,9 @@ class ProximityScenarioIT extends IntegrationTest {
         return key;
     }
 
-    private void awaitCached(Long id, Instant at){
+    // 판정은 상대 위치를 Redis에서 읽고, 그 값은 커밋 뒤에 바뀐다.
+    // 저장만 기다리면 다음 장비가 상대의 옛 위치로 판정한다
+    private void awaitCached(Long id, Instant at) {
         await().atMost(Duration.ofSeconds(10)).pollInterval(Duration.ofMillis(100))
                 .until(() -> cache.get(id).map(l -> l.recordedAt().equals(at)).orElse(false));
     }

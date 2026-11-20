@@ -239,7 +239,7 @@ Flyway `src/main/resources/db/migration/`, 표당 파일 하나(MySQL DDL은 트
 | CI | 캐시 없음 1분 55초 → 있음 1분 14초 | [#22](https://github.com/hyunjyyyy/heavy-eq-tracker/issues/22) |
 | 현장 열 추가 | 10만 행 `location_event`에 열 추가 + 인덱스 + FK 184 ms(V13), 6개 표 기본값 제거 64 ms(V18~V23). 행을 다시 쓰지 않음(INSTANT) | [#30](https://github.com/hyunjyyyy/heavy-eq-tracker/issues/30) |
 | 재전송 | 10%: 보냄 317, 재전송 27 → DB 290 | [#33](https://github.com/hyunjyyyy/heavy-eq-tracker/issues/33) |
-| 늦게 오기 | 10%(3초), 반경 30 m, 장비 10대 60초: NEAR·CLEAR 86·80 → 112·108, 늦은 위치로 판정된 이벤트 0 → 33 | [#45](https://github.com/hyunjyyyy/heavy-eq-tracker/issues/45) |
+| 늦게 오기 | 10%(3초), 반경 30 m, 장비 10대 60초: 늦은 위치로 판정된 이벤트 33 → 0(늦은 위치는 저장만), NEAR·CLEAR 112·108 → 82·76(기준 86·80) | [#45](https://github.com/hyunjyyyy/heavy-eq-tracker/issues/45) |
 | 부하 | 장비 10 / 100 / 1000대(예열 15초, 60초): 판정 처리 9.7 / 50.0 / 32.9건/초, 판정 지연 p99 0.04 / 45 / 68초, 실행 직후 lag 0 / 3,666 / 약 69,500, 202 p99 20 / 18 / 33 ms. 컨슈머 스레드 하나라 한계 약 50건/초 | #33 |
 
 ## 설계 결정 찾아보기
