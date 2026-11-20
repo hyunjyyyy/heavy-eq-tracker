@@ -49,6 +49,30 @@ class ProximityScenarioIT extends IntegrationTest {
         assertThat(types(a, b)).isEmpty();
     }
 
+    /* 더 오래된 위치(B와 14 m)가 늦게 와도 NEAR(8 m)가 CLEAR로 뒤집히지 않는다 */
+    @Test
+    void lateLocationDoesNotFlipNear() throws Exception {
+        Long a = newEquipment();
+        Long b = newEquipment();
+        Instant t = Instant.now().truncatedTo(ChronoUnit.SECONDS).minusSeconds(60);
+        report(a, new Sample(0, 0, 0, 0), t.plusSeconds(11));
+        report(b, new Sample(8, 0, 0, 0), t.plusSeconds(11));
+        awaitStored(send(a, new Sample(-6, 0, 0, 0), t.plusSeconds(10)));
+        assertThat(types(a, b)).containsExactly("NEAR");
+    }
+
+    /* 대조군: 같은 위치가 제때(12초) 오면 CLEAR가 생긴다 */
+    @Test
+    void inOrderLocationStillClears() throws Exception {
+        Long a = newEquipment();
+        Long b = newEquipment();
+        Instant t = Instant.now().truncatedTo(ChronoUnit.SECONDS).minusSeconds(60);
+        report(a, new Sample(0, 0, 0, 0), t.plusSeconds(11));
+        report(b, new Sample(8, 0, 0, 0), t.plusSeconds(11));
+        report(a, new Sample(-6, 0, 0, 0), t.plusSeconds(12));
+        assertThat(types(a, b)).containsExactly("NEAR", "CLEAR");
+    }
+
     /** 초속 1 m로 다가갔다가 처음 자리로 돌아오는 한 바퀴. A 한 걸음, B 한 걸음 번갈아 */
     private void play(Long a, Long b, double startGap, double closestGap) throws Exception {
         List<Route> pair = ApproachScenario.pair(startGap, closestGap, 1);
@@ -62,20 +86,35 @@ class ProximityScenarioIT extends IntegrationTest {
     }
 
     private void report(Long id, Sample s, Instant at) throws Exception {
+        send(id, s, at);
+        awaitCached(id, at);
+    }
+
+    private String send(Long id, Sample s, Instant at) throws Exception {
+        String key = UUID.randomUUID().toString();
         String body = """
                 {"equipmentId": %d, "lat": %s, "lon": %s,
                  "fixType": "RTK_FIXED", "horizontalAccuracyM": 0.05, "recordedAt": "%s"}
                 """.formatted(id, GEO.lat(s), GEO.lon(s), at);
         mvc.perform(post("/api/v1/locations")
-                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .header("Idempotency-Key", key)
                         .header("X-Equipment-Id", id)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isAccepted());
-        // 판정은 상대 위치를 Redis에서 읽고, 그 값은 커밋 뒤에 바뀐다.
-        // 저장만 기다리면 다음 장비가 상대의 옛 위치로 판정한다
+        return key;
+    }
+
+    // 판정은 상대 위치를 Redis에서 읽고, 그 값은 커밋 뒤에 바뀐다.
+    // 저장만 기다리면 다음 장비가 상대의 옛 위치로 판정한다
+    private void awaitCached(Long id, Instant at) {
         await().atMost(Duration.ofSeconds(10)).pollInterval(Duration.ofMillis(100))
                 .until(() -> cache.get(id).map(l -> l.recordedAt().equals(at)).orElse(false));
+    }
+
+    private void awaitStored(String key) {
+        await().atMost(Duration.ofSeconds(10)).pollInterval(Duration.ofMillis(100))
+                .until(() -> jdbc.queryForObject("SELECT COUNT(*) FROM location_event WHERE idempotency_key = ?", Integer.class, key) == 1);
     }
 
     private List<String> types(Long x, Long y) {

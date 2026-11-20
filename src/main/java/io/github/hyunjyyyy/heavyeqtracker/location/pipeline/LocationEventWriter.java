@@ -59,6 +59,10 @@ public class LocationEventWriter {
         Equipment equipment = equipmentRepository.findWithLockById(m.equipmentId())
                 .orElseThrow(() -> new EquipmentNotFoundException(m.equipmentId()));
 
+        /* 저장 뒤에 물으면 자기 행이 '같은 시각'으로 걸린다(조회 전 자동 flush). 반드시 저장 전에 */
+        boolean late = eventRepository.existsByEquipmentIdAndRecordedAtGreaterThanEqual(
+                m.equipmentId(), m.recordedAt());
+
         LocationEvent saved = eventRepository.save(new LocationEvent(
                 equipment, m.lat(), m.lon(), m.speedKmh(), m.heading(), m.fixType(),
                 m.horizontalAccuracyM(), m.recordedAt(), m.receivedAt(), m.idempotencyKey()));
@@ -67,6 +71,11 @@ public class LocationEventWriter {
         if (!belongsToOpenAssignment(m)) {
             log.info("location of closed assignment recorded only: equipmentId={} siteId={} recordedAt={}",
                     m.equipmentId(), m.siteId(), m.recordedAt());
+            return;
+        }
+        /* 더 새로운 위치가 이미 판정됐으면 기록만 한다. 판정하면 쌍·체류가 과거로 되돌아간다(#45 결정 2) */
+        if (late) {
+            log.info("late location recorded only: equipmentId={} recordedAt={}", m.equipmentId(), m.recordedAt());
             return;
         }
         publisher.publishEvent(new LocationSaved(saved));                              // 동기. 같은 트랜잭션에서 판정

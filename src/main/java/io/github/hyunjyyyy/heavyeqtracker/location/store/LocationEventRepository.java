@@ -14,6 +14,9 @@ import java.util.Optional;
 public interface LocationEventRepository extends JpaRepository<LocationEvent, Long> {
 
     Optional<LocationEvent> findByIdempotencyKey(String idempotencyKey);
+
+    boolean existsByEquipmentIdAndRecordedAtGreaterThanEqual(Long equipmentId, Instant recordedAt);
+
     @EntityGraph(attributePaths = "equipment")
     Optional<LocationEvent> findFirstByEquipmentIdOrderByRecordedAtDesc(Long equipmentId);
 
