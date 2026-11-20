@@ -1,0 +1,8 @@
+# 측정용. 로그를 컨슈머 스레드가 처리 도중에 써서, 켜 두면 콘솔 쓰기 속도를 재게 된다
+logging:
+  level:
+    org.hibernate.SQL: WARN
+    org.hibernate.orm.jdbc.bind: WARN
+    com.zaxxer.hikari.HikariConfig: WARN
+    org.springframework.web.servlet.mvc.method.annotation: WARN
+    io.github.hyunjyyyy.heavyeqtracker: WARN

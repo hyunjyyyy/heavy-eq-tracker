@@ -1,0 +1,7 @@
+global:
+  scrape_interval: 5s   # 60초 실행에 점이 12개는 찍히게
+scrape_configs:
+  - job_name: heavy-eq-tracker
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['host.docker.internal:8080']
