@@ -16,3 +16,17 @@ DB에는 저장됐는데 kafka는 모르면 판정이 돌지 않아서 위치가
 
 **Q. 202를 준 뒤 컨슈머가 DB 저장에 실패하면?**
 재시도하다가 안 되면 DLT로 가서 안 사라짐
+
+## 2. 멱등 세 겹: Redis 선점 / 컨슈머 키 조회 / DB UNIQUE
+
+근거: `IdempotencyStore.tryAcquire()`, `LocationEventWriter.save()`의 `findByIdempotencyKey`, `V3__location_event.sql`의 UNIQUE, `IngestGuardIT.sameKeyTwiceSavesOnce`, #6, #11
+
+**Q. 멱등 처리를 세 군데서 하는데, 각각 무엇을 막나?**
+redis는 http 재전송을 kafka에 넣기 전에 거르고, 컨슈머는 kafka 재소비를 거릅니다. db는 동시에 조회되었을때 둘 다 insert 되는걸 막는 마지막 장치입니다.
+
+**Q. Redis가 재시작돼 선점 키가 날아간 사이 재전송이 오면?**
+kafka 컨슈머에서 키를 조회하면 중복을 거를 수 있음
+
+**Q. 컨슈머 키 조회를 빼고 DB UNIQUE만 남기면?**
+- 처음 답: 예외 나서 재시도하다가 DLT로 감 (근데 그렇게 되면 뭐가 안종ㅎ은데?)
+- 다시 한 답: 정상적인 중복도 dlt에 쌓여서 실제로 문제가 발생했을 때 확인하기 어려움. 또한 로그가 계속 warn/error 찍히면서 정상인데 문제가 있는 것처럼 보임
