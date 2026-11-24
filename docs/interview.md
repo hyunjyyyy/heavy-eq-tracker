@@ -30,3 +30,19 @@ kafka 컨슈머에서 키를 조회하면 중복을 거를 수 있음
 **Q. 컨슈머 키 조회를 빼고 DB UNIQUE만 남기면?**
 - 처음 답: 예외 나서 재시도하다가 DLT로 감 (근데 그렇게 되면 뭐가 안종ㅎ은데?)
 - 다시 한 답: 정상적인 중복도 dlt에 쌓여서 실제로 문제가 발생했을 때 확인하기 어려움. 또한 로그가 계속 warn/error 찍히면서 정상인데 문제가 있는 것처럼 보임
+
+## 4. 현장 모델: `@TenantId`, fail-closed, 현장별 Redis 키
+
+근거: `@TenantId`(현장 표 6개), `SiteTenantResolver`, `SiteContext`(`ROOT = 0`, `NONE = -1`), `SiteContextInterceptor`, `LocationEventConsumer`의 `SiteContext.run`, `LatestLocationQueryService.latestOf()`, `SiteFailClosedIT`, #30
+
+**Q. `@TenantId`는 어디까지 막고, 현장을 정하지 않으면 어떻게 되나?**
+hibernate로 하는 조회와 저장은 tenantid로 알아서 나눠줌 그러나 redis, nativesql, tenantid 없는 표는 막지 못함. 현장을 정하지 않으면 site_id를 -1로 돌려주기 때문에 조회가 되지 않음 fk위반으로 실패하게됨
+
+**Q. 정하지 않으면 전체(ROOT)로 보게 하면 안 되나?**
+전체로 보면 실수했을 때 남의 현장이 다 보임 보안문제
+
+**Q. `@Transactional` 메서드 안에서 `SiteContext`를 바꾸면?**
+세션이 이미 열려서 바꿔도 옛 현장으로 감
+
+**Q. Redis GEO 키를 현장별로 나누지 않으면?**
+남의 현장 장비가 근접 후보로 잡혀서 NEAR가 뜸
