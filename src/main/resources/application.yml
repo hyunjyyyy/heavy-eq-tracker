@@ -24,6 +24,7 @@ spring:
       auto-offset-reset: earliest
     listener:
       ack-mode: record
+      concurrency: 3
 management:
   endpoints:
     web:
