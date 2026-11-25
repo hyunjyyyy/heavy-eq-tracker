@@ -46,3 +46,19 @@ hibernate로 하는 조회와 저장은 tenantid로 알아서 나눠줌 그러�
 
 **Q. Redis GEO 키를 현장별로 나누지 않으면?**
 남의 현장 장비가 근접 후보로 잡혀서 NEAR가 뜸
+
+## 5. 장비 이동: 비관적 락과 열린 배정 유일 인덱스, 늦게 온 옛 현장 위치
+
+근거: `EquipmentMoveService.move()`, `EquipmentRepository.findWithLockById`(`PESSIMISTIC_WRITE`), `V24`(생성 열 `open_marker` + UNIQUE), `LocationEventWriter.belongsToOpenAssignment()`, `EquipmentMoveIT`, `EquipmentSiteAssignmentIT`, #31
+
+**Q. 비관적 락과 유일 인덱스를 둘 다 둔 이유는? 각각 무슨 역할인가?**
+비관적 락은 동시 요청을 줄 세워서 중복을 막고 유일 인덱스는 뚫렸을 때의 안전망이다
+
+**Q. 락만 있고 유일 인덱스가 없으면 언제 열린 배정이 둘 생기나?**
+잠금 없이 배정 넣는 코드를 새로 짜면 두 개 생김
+
+**Q. 유일 인덱스만 있고 락이 없으면, 동시 이동 두 개는?**
+하나는 DB 예외로 실패해서 에러
+
+**Q. 이동 전에 찍혀 이동 뒤에 도착한 옛 현장 위치는?**
+옛 현장으로 기록만 하고 판정은 안 함, 정리한 게 되살아나서
