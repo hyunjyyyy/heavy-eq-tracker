@@ -31,6 +31,9 @@ kafka 컨슈머에서 키를 조회하면 중복을 거를 수 있음
 - 처음 답: 예외 나서 재시도하다가 DLT로 감 (근데 그렇게 되면 뭐가 안종ㅎ은데?)
 - 다시 한 답: 정상적인 중복도 dlt에 쌓여서 실제로 문제가 발생했을 때 확인하기 어려움. 또한 로그가 계속 warn/error 찍히면서 정상인데 문제가 있는 것처럼 보임
 
+**Q. 선점 TTL은 10분. 11분 뒤 같은 멱등키로 재전송하면?**
+redis는 날아갔지만 컨슈머 키 조회에서 걸러짐
+
 ## 3. 판정은 같은 트랜잭션, Redis는 커밋 뒤
 
 근거: `LocationEventWriter.save()`(이벤트 두 개), `ProximityService`·`GeofenceService`의 `@EventListener`, `LatestLocationCache.onRecorded`의 `@TransactionalEventListener(AFTER_COMMIT)`, #7, #16
@@ -77,6 +80,9 @@ hibernate로 하는 조회와 저장은 tenantid로 알아서 나눠줌 그러�
 **Q. Redis GEO 키를 현장별로 나누지 않으면?**
 남의 현장 장비가 근접 후보로 잡혀서 NEAR가 뜸
 
+**Q. 본사 API(`/hq/**`)는 현장을 무엇으로 정하나? fail-closed와 충돌하지 않나?**
+ROOT로 정함, 일부러 정한 거라 충돌 안 함
+
 ## 5. 장비 이동: 비관적 락과 열린 배정 유일 인덱스, 늦게 온 옛 현장 위치
 
 근거: `EquipmentMoveService.move()`, `EquipmentRepository.findWithLockById`(`PESSIMISTIC_WRITE`), `V24`(생성 열 `open_marker` + UNIQUE), `LocationEventWriter.belongsToOpenAssignment()`, `EquipmentMoveIT`, `EquipmentSiteAssignmentIT`, #31
@@ -106,3 +112,7 @@ hibernate로 하는 조회와 저장은 tenantid로 알아서 나눠줌 그러�
 
 **Q. "안 생긴다" 시험 옆에 대조군을 두는 이유는?**
 판정을 아예 안 해서 통과한 게 아닌지 확인하려고
+
+**Q. 새 표를 만들고 `IntegrationTest`의 TRUNCATE 목록에 넣는 걸 깜빡하면?**
+- 처음 답: 무슨 말인지 이해를 못했어
+- 다시 한 답: B는 실패, A보다 먼저 돌면 통과
