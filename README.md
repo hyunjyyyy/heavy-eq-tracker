@@ -30,7 +30,7 @@ Java 21 · Spring Boot 4.1 · Kafka · MySQL · Redis, 시험은 Testcontainers.
                                           └─ LocationEventProducer ──▶ Kafka location-events (파티션 3, 키 = equipmentId, 값에 siteId)
                                                                            │
                                                  LocationEventConsumer ◀───┘  (그룹 tracker-judge, 처리 → 커밋,
-                                                   │                             실패 시 1~10초 간격 재시도 → location-events-dlt)
+                                                   │                             교착 등 충돌은 즉시 3번, 그 밖은 1~10초 간격 재시도 → location-events-dlt)
                                                    └▶ SiteContext = 메시지의 siteId → LocationEventWriter  @Transactional
                                                         ├─ findByIdempotencyKey → 있으면 건너뜀 (재소비 멱등)
                                                         ├─ INSERT location_event
