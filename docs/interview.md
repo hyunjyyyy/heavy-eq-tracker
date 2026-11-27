@@ -31,6 +31,33 @@ kafka 컨슈머에서 키를 조회하면 중복을 거를 수 있음
 - 처음 답: 예외 나서 재시도하다가 DLT로 감 (근데 그렇게 되면 뭐가 안종ㅎ은데?)
 - 다시 한 답: 정상적인 중복도 dlt에 쌓여서 실제로 문제가 발생했을 때 확인하기 어려움. 또한 로그가 계속 warn/error 찍히면서 정상인데 문제가 있는 것처럼 보임
 
+## 3. 판정은 같은 트랜잭션, Redis는 커밋 뒤
+
+근거: `LocationEventWriter.save()`(이벤트 두 개), `ProximityService`·`GeofenceService`의 `@EventListener`, `LatestLocationCache.onRecorded`의 `@TransactionalEventListener(AFTER_COMMIT)`, #7, #16
+
+**Q. 판정은 같은 트랜잭션, Redis 캐시 갱신은 커밋 뒤. 왜 나눴나?**
+- 틀렸던 답: 가장 큰 원칙은 롤백 가능한 것은 트랜잭션 안에, 아닌 것은 밖에 하는 것입니다. DB는 트랜잭션이 실패하면 롤백되고 한 트랜잭션 안에서는 원자성이 성립함. 그러나 redis는 위치와 판정 자체를 저장해야 하기 때문에 이 모든일이 끝나고 되어야 함.
+redis도 같은 트랜잭션에 묶이면 롤백은 됐는데 redis에는 롤백된 위치와 판정이 저장되는 일이 생길 수 있음
+- 바른 답: 가장 큰 원칙은 롤백 가능한 것은 트랜잭션 안에, 아닌 것은 밖에 하는 것입니다. DB는 트랜잭션이 실패하면 롤백되고 한 트랜잭션 안에서는 원자성이 성립합니다. 판정과 위치 저장은 동시에 진행되어야 하기 때문에 한 트랜잭션으로 묶습니다. 원자성 때문에 둘중에 하나만 있는 경우는 저장되지 않습니다. redis는 롤백이 되지 않기 때문에 밖에서 해야합니다. redis를 트랜잭션 안에서 쓰면 db가 롤백되어도  redis는 그대로 남기 때문에 둘이 어긋나게 됩니다.
+
+**Q. `@EventListener`와 `@TransactionalEventListener(AFTER_COMMIT)`의 차이는?**
+- 틀렸던 답: 이거 몇번 봤는데 또 까먹었다...
+- 바른 답: EventListener는 바로 실행, AFTER_COMMIT은 커밋 성공 뒤에만 실행
+
+**Q. 판정 리스너에 `AFTER_COMMIT`을 붙이면?**
+위치는 저장되었는데 판정은 저장되지 않음
+
+**Q. 캐시 갱신(`AFTER_COMMIT`) 리스너에서 예외가 나면?**
+이미 커밋돼서 롤백 안 되고, 캐시만 안 바뀜
+
+**변형 질문** (날을 나눠 다시 묻기)
+- [x] 1. (11-25) 장비 이동 때 CLEAR 기록은 같은 트랜잭션, 옛 현장 GEO 빼기는 커밋 뒤. 왜 다르게 했고, GEO 빼기를 트랜잭션 안에서 하면?
+  - clear는 DB, geo는 redis기 때문에 이전에 말했던것 처럼 롤백 가능한것과 그렇지 않은것을 분리한것과 같은 맥락
+  - 롤백 되어도 redis geo에서는 현장에서 빠진다 판정에 사용되는 후보장비에 들어가지 않음
+- [x] 2. (11-27) 현장 근접 설정을 바꿀 때 메모리 캐시 지우기를 트랜잭션 안이 아니라 커밋 뒤에 하는 이유는?
+  - 처음 답: 커밋 전에 지워버리는데 다른 스레드가 설정을 읽으러 오면 다른 스레드에서 온 값이 그 위에 덮어씌워지나?
+  - 다시 한 답: 옛값이지 그러면 새로 업데이트 하려고 캐시를 지웠는데 또 옛날값을 올리게 됨
+
 ## 4. 현장 모델: `@TenantId`, fail-closed, 현장별 Redis 키
 
 근거: `@TenantId`(현장 표 6개), `SiteTenantResolver`, `SiteContext`(`ROOT = 0`, `NONE = -1`), `SiteContextInterceptor`, `LocationEventConsumer`의 `SiteContext.run`, `LatestLocationQueryService.latestOf()`, `SiteFailClosedIT`, #30
